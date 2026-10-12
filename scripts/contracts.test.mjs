@@ -119,7 +119,7 @@ for (const [name, input] of badStreams) {
   });
 }
 
-test("request transport is implemented and returns an explicit error until Clarity is connected", async () => {
+test("request transport rejects a missing replay without exposing its path", async () => {
   const request = JSON.parse(requestText);
   assert.deepEqual(validateRequest(request), request);
   const encoded = encodeRequest(request);
@@ -129,7 +129,7 @@ test("request transport is implemented and returns an explicit error until Clari
   const messages = await read(result.stdout);
   assert.equal(messages.length, 1);
   assert.equal(messages[0].type, "error");
-  assert.equal(messages[0].code, "not_implemented");
+  assert.equal(messages[0].code, "invalid_replay");
   assert.equal(messages[0].requestId, request.requestId);
   assert.doesNotMatch(result.stderr + result.stdout, /not-a-real-replay/);
 });

@@ -2,11 +2,11 @@
 
 Локальный проект персональной аналитики Dota 2. После E00-T04 доступны собираемый Next.js web, запускаемый Node.js worker, Kotlin/JVM CLI, общие схемы данных и проверяемый NDJSON-протокол; настроены локальный Git и публичный GitHub-репозиторий. Карта, таймлайн и состояния героев входят в будущий MVP; видео отложено.
 
-История матчей, скачивание и разбор реплеев, очередь, база данных и LLM пока не подключены. Стартовая страница показывает состояние разработки. `/api/health` проверяет только работу web-процесса.
+История матчей, скачивание, очередь, база данных и LLM пока не подключены. Разбор локального `.dem` доступен через Kotlin CLI; web и worker ещё не используют его. Стартовая страница показывает состояние разработки. `/api/health` проверяет только работу web-процесса.
 
 В E01-T01 отдельно проверены реальные запросы профиля и истории OpenDota без ключей: получены 20 последних матчей и подтверждён участник в пяти сводках. [Результаты и ограничения](docs/data-source-validation.md) включают параметры запросов и локальные артефакты.
 
-В E01-T02 [получены пять контрольных реплеев](docs/replay-download-validation.md), проверены хеши и внутренние ID. Все пять ссылок имеют суффикс `.bz2`, но фактическое сжатие — Zstandard. Архивы и распакованные `.dem` хранятся только локально в `data/replay-validation/2026-10-12-e01-t02/`, суммарно около 623 MB. Отчёты в Git обезличены. Следующая задача — E01-T03: проверить базовые события через Kotlin/Clarity.
+В E01-T02 [получены пять контрольных реплеев](docs/replay-download-validation.md), проверены хеши и внутренние ID. Все пять ссылок имеют суффикс `.bz2`, но фактическое сжатие — Zstandard. Архивы и распакованные `.dem` хранятся только локально в `data/replay-validation/2026-10-12-e01-t02/`, суммарно около 623 MB. Отчёты в Git обезличены. В E01-T03 [проверен Kotlin/Clarity-парсер](docs/replay-parser-validation.md): пять реплеев, 450 совпавших итоговых показателей, события смертей, игровые часы и паузы. Следующая задача — E01-T04: обзор и контекст решений.
 
 ## Требования и фиксированные версии
 
@@ -25,7 +25,7 @@
 
 Прямые npm-зависимости имеют точные версии, транзитивные закрепляет lockfile. Зависимости Kotlin закреплены в `gradle.lockfile`. В сборке используется Wrapper; глобальный Gradle не нужен. При первом запуске npm и Gradle потребуется доступ к реестрам и серверу дистрибутива Gradle.
 
-Выбор сборки основан на [документации Next.js](https://nextjs.org/docs/app/getting-started/installation), [совместимости Kotlin/Gradle](https://kotlinlang.org/docs/gradle-configure-project.html) и [проверке дистрибутива Wrapper](https://docs.gradle.org/current/userguide/gradle_wrapper.html#sec:verification). Это проверка каркаса; совместимость Clarity с реальными реплеями относится к E01-T03.
+Выбор сборки основан на [документации Next.js](https://nextjs.org/docs/app/getting-started/installation), [совместимости Kotlin/Gradle](https://kotlinlang.org/docs/gradle-configure-project.html) и [проверке дистрибутива Wrapper](https://docs.gradle.org/current/userguide/gradle_wrapper.html#sec:verification). Совместимость Clarity 5.0.1 / protobuf 7.1 с Kotlin и пятью контрольными реплеями подтверждена в E01-T03; версии закреплены в Gradle lockfile.
 
 ## Установка и сборка
 
@@ -79,7 +79,9 @@ npm run start:worker -- --check
 npm run start:parser -- --version
 ```
 
-Worker сообщает `mode: scaffold` и `queueConnected: false`. Проверка Kotlin CLI сообщает `replayParsing: false`; неизвестные аргументы, включая позиционный путь к реплею, завершаются с кодом 2 и диагностикой в stderr. Для обмена реализованы `--protocol` (принимает запрос и пока возвращает `not_implemented`, код 3) и `--validate-ndjson` (проверяет и возвращает поток записей). Это отдельные команды от диагностики `--check`. Для чистого stdout вызывайте CLI напрямую, без вывода npm:
+Worker сообщает `mode: scaffold` и `queueConnected: false`. Проверка Kotlin CLI сообщает `mode: basic`, `replayParsing: true`; неизвестные аргументы, включая позиционный путь к реплею, завершаются с кодом 2 и диагностикой в stderr. `--protocol` выдаёт записи и `complete` (код 0), при ошибке реплея — `error` (код 3). `--validate-ndjson` проверяет и возвращает поток записей. Для чистого stdout вызывайте CLI напрямую, без вывода npm.
+
+Пример ниже использует синтетический путь из fixture и ожидаемо возвращает `invalid_replay`, код 3. Для реального запуска передайте запрос с локальным `replayPath` и ожидаемым ID матча; результаты сохраняйте под `data/`. Формат описан в [контрактах](docs/contracts.md), воспроизводимый прогон — в [отчёте E01-T03](docs/replay-parser-validation.md).
 
 ```sh
 ./services/replay-parser/build/install/replay-parser/bin/replay-parser --protocol \

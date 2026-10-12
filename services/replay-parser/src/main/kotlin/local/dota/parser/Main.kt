@@ -5,28 +5,33 @@ import kotlin.system.exitProcess
 fun main(args: Array<String>) {
     when (args.toList()) {
         emptyList<String>(), listOf("--help") ->
-            println("Usage: replay-parser [--help | --version | --check | --protocol | --validate-ndjson]\nScaffold only; .dem parsing is not implemented.")
+            println("Usage: replay-parser [--help | --version | --check | --protocol | --validate-ndjson]\nDota Source 2 basic replay extraction via NDJSON.")
         listOf("--version") -> println("replay-parser 0.0.0")
-        listOf("--check") -> println("""{"service":"replay-parser","status":"ok","mode":"scaffold","replayParsing":false}""")
+        listOf("--check") -> println("""{"service":"replay-parser","status":"ok","mode":"basic","replayParsing":true}""")
         listOf("--validate-ndjson") -> protocolCommand {
             Ndjson.validateStream(System.`in`) { node -> print(Ndjson.encode(node)) }
             0
         }
         listOf("--protocol") -> protocolCommand {
             val request = Ndjson.readRequest(System.`in`)
-            val message = ContractValidator.mapper.createObjectNode()
-                .put("protocolVersion", ContractValidator.PROTOCOL_VERSION)
-                .put("schemaVersion", ContractValidator.SCHEMA_VERSION)
-                .put("requestId", request["requestId"].asText())
-                .put("sequence", 0)
-                .put("type", "error")
-                .put("code", "not_implemented")
-                .put("message", "Replay parsing is not implemented; contract transport is available.")
-            print(Ndjson.encode(message))
-            3
+            val messages = try {
+                val path = try { java.nio.file.Path.of(request["replayPath"].asText()) } catch (_: java.nio.file.InvalidPathException) {
+                    throw ReplayFailure("invalid_replay", "Replay path is invalid.")
+                }
+                val records = ReplayParser().parse(path, request["expectedMatchId"].asText())
+                records.mapIndexed { index, record ->
+                    envelope(request["requestId"].asText(), index, "record").apply { set<com.fasterxml.jackson.databind.JsonNode>("record", record) }
+                } + listOf(envelope(request["requestId"].asText(), records.size, "complete").put("recordCount", records.size))
+            } catch (failure: ReplayFailure) {
+                listOf(envelope(request["requestId"].asText(), 0, "error").put("code", failure.code).put("message", failure.message))
+            }
+            // Encode the whole bounded basic result before exposing any successful records.
+            val lines = messages.map { Ndjson.encode(it) }
+            lines.forEach { print(it) }
+            if (messages.last()["type"].asText() == "complete") 0 else 3
         }
         else -> {
-            System.err.println("Unsupported arguments. Use --help. Replay parsing is not implemented.")
+            System.err.println("Unsupported arguments. Use --help.")
             exitProcess(2)
         }
     }
@@ -43,3 +48,10 @@ private fun protocolCommand(action: () -> Int) {
     System.out.flush()
     if (code != 0) exitProcess(code)
 }
+
+private fun envelope(requestId: String, sequence: Int, type: String) = ContractValidator.mapper.createObjectNode()
+    .put("protocolVersion", ContractValidator.PROTOCOL_VERSION)
+    .put("schemaVersion", ContractValidator.SCHEMA_VERSION)
+    .put("requestId", requestId)
+    .put("sequence", sequence)
+    .put("type", type)

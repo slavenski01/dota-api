@@ -76,15 +76,15 @@ test("worker starts without credentials, rejects unsupported arguments and stops
   assert.match(running.output(), /worker.stopped/);
 });
 
-test("installed Kotlin CLI starts and rejects a replay instead of pretending to parse it", () => {
+test("installed Kotlin CLI advertises parsing and rejects unsupported positional arguments", () => {
   const checked = run(parser, ["--check"]);
   assert.equal(checked.status, 0, checked.stderr);
-  assert.equal(JSON.parse(checked.stdout).replayParsing, false);
+  assert.equal(JSON.parse(checked.stdout).replayParsing, true);
   assert.equal(run(parser, ["--version"]).stdout.trim(), "replay-parser 0.0.0");
   const invalid = run(parser, ["nonexistent.dem"]);
   assert.equal(invalid.status, 2);
   assert.equal(invalid.stdout, "");
-  assert.match(invalid.stderr, /not implemented/);
+  assert.match(invalid.stderr, /Unsupported arguments/);
 });
 
 test("documented npm commands forward CLI arguments", () => {
