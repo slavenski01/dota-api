@@ -21,6 +21,7 @@ packages/contracts/src/generated/
 # Replay inputs, local storage and temporary artifacts
 *.dem
 *.dem.bz2
+*.dem.zst
 data/
 artifacts/
 tmp/
