@@ -1,0 +1,220 @@
+[
+  {
+    "name": "numeric match ID loses precision",
+    "recordId": "match-1",
+    "path": "matchId",
+    "op": "set",
+    "value": 9007199254740992
+  },
+  {
+    "name": "noncanonical decimal ID",
+    "recordId": "match-1",
+    "path": "matchId",
+    "op": "set",
+    "value": "01"
+  },
+  {
+    "name": "unknown data version",
+    "recordId": "match-1",
+    "path": "schemaVersion",
+    "op": "set",
+    "value": "0.2.0"
+  },
+  {
+    "name": "undeclared field",
+    "recordId": "match-1",
+    "path": "secret",
+    "op": "set",
+    "value": "do-not-echo-fixture"
+  },
+  {
+    "name": "nullable field must be explicit",
+    "recordId": "participant-1",
+    "path": "accountId",
+    "op": "delete",
+    "value": null
+  },
+  {
+    "name": "negative statistics",
+    "recordId": "participant-1",
+    "path": "statistics.kills",
+    "op": "set",
+    "value": -1
+  },
+  {
+    "name": "wrong slot side",
+    "recordId": "participant-1",
+    "path": "team",
+    "op": "set",
+    "value": "radiant"
+  },
+  {
+    "name": "invalid slot",
+    "recordId": "participant-1",
+    "path": "playerSlot",
+    "op": "set",
+    "value": 5
+  },
+  {
+    "name": "invalid date",
+    "recordId": "match-1",
+    "path": "startedAt",
+    "op": "set",
+    "value": "2026-02-29T00:00:00Z"
+  },
+  {
+    "name": "calendar timestamp requires UTC",
+    "recordId": "match-1",
+    "path": "startedAt",
+    "op": "set",
+    "value": "2026-10-12T03:00:00+03:00"
+  },
+  {
+    "name": "unknown cannot contain zero",
+    "recordId": "state-1",
+    "path": "mana.value",
+    "op": "set",
+    "value": 0
+  },
+  {
+    "name": "known cannot be null",
+    "recordId": "state-1",
+    "path": "hp.value",
+    "op": "set",
+    "value": null
+  },
+  {
+    "name": "unknown requires reason",
+    "recordId": "state-1",
+    "path": "mana.reason",
+    "op": "delete",
+    "value": null
+  },
+  {
+    "name": "future state observation",
+    "recordId": "state-1",
+    "path": "hp.observedAtSeconds",
+    "op": "set",
+    "value": 601
+  },
+  {
+    "name": "future last-known position",
+    "recordId": "state-hidden",
+    "path": "lastKnownPosition.observedAtSeconds",
+    "op": "set",
+    "value": 601
+  },
+  {
+    "name": "hidden state leaks HP",
+    "recordId": "state-hidden",
+    "path": "hp",
+    "op": "set",
+    "value": {
+      "status": "known",
+      "value": 400,
+      "observedAtSeconds": 600.25
+    }
+  },
+  {
+    "name": "unknown visibility also hides state",
+    "recordId": "state-1",
+    "path": "visibility",
+    "op": "set",
+    "value": {
+      "status": "unknown",
+      "value": null,
+      "reason": "Данные отсутствуют в синтетическом примере"
+    }
+  },
+  {
+    "name": "confirmed empty requires evidence",
+    "recordId": "coverage-empty",
+    "path": "evidenceIds",
+    "op": "set",
+    "value": []
+  },
+  {
+    "name": "missing coverage requires reason",
+    "recordId": "coverage-missing",
+    "path": "reason",
+    "op": "set",
+    "value": null
+  },
+  {
+    "name": "reversed coverage window",
+    "recordId": "coverage-1",
+    "path": "window.endSeconds",
+    "op": "set",
+    "value": -30
+  },
+  {
+    "name": "duplicate coverage participants",
+    "recordId": "coverage-1",
+    "path": "participantSlots",
+    "op": "set",
+    "value": [
+      0,
+      0
+    ]
+  },
+  {
+    "name": "decision outside episode",
+    "recordId": "episode-1",
+    "path": "decisionTimeSeconds",
+    "op": "set",
+    "value": 30
+  },
+  {
+    "name": "confirmed review requires alternative",
+    "recordId": "episode-1",
+    "path": "review.alternative",
+    "op": "set",
+    "value": null
+  },
+  {
+    "name": "failure requires an error",
+    "recordId": "job-1",
+    "path": "status",
+    "op": "set",
+    "value": "failed"
+  },
+  {
+    "name": "ready requires available data",
+    "recordId": "job-1",
+    "path": "dataLevel",
+    "op": "set",
+    "value": "none"
+  },
+  {
+    "name": "review references unlisted episode",
+    "recordId": "report-1",
+    "path": "reviewRefs",
+    "op": "set",
+    "value": [
+      {
+        "episodeId": "other",
+        "reviewVersion": 1
+      }
+    ]
+  },
+  {
+    "name": "report claims need evidence",
+    "recordId": "report-1",
+    "path": "claims",
+    "op": "set",
+    "value": [
+      {
+        "kind": "fact",
+        "text": "No source",
+        "evidenceIds": []
+      }
+    ]
+  },
+  {
+    "name": "unsafe tick integer",
+    "recordId": "death-1",
+    "path": "tick",
+    "op": "set",
+    "value": 9007199254740992
+  }
+]

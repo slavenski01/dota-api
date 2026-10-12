@@ -1,0 +1,624 @@
+[
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "match",
+    "id": "match-1",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "startedAt": "2026-10-12T00:00:00Z",
+    "durationSeconds": 1800,
+    "mode": "normal",
+    "patch": null,
+    "radiantWin": false
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "participant",
+    "id": "participant-1",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "playerSlot": 128,
+    "team": "dire",
+    "accountId": null,
+    "steamId64": "76561198000000001",
+    "heroId": "1",
+    "aspectId": null,
+    "role": null,
+    "statistics": {
+      "kills": 0,
+      "deaths": 1,
+      "assists": 0,
+      "lastHits": null,
+      "denies": 0,
+      "gpm": null,
+      "xpm": null,
+      "heroDamage": null,
+      "towerDamage": 0
+    }
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "event",
+    "id": "death-1",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "gameTimeSeconds": -12.25,
+    "tick": 120,
+    "data": {
+      "type": "death",
+      "victimSlot": 128,
+      "killerSlot": null,
+      "afterBuyback": true
+    },
+    "coverageIds": [
+      "coverage-1"
+    ]
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "hero_state",
+    "id": "state-1",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "playerSlot": 128,
+    "gameTimeSeconds": 600.25,
+    "tick": 20000,
+    "perspective": {
+      "mode": "team",
+      "team": "dire"
+    },
+    "visibility": {
+      "status": "known",
+      "value": "visible",
+      "observedAtSeconds": 600.25
+    },
+    "position": {
+      "status": "known",
+      "value": {
+        "x": -1200.5,
+        "y": 350.25,
+        "z": null,
+        "coordinateSystem": "world",
+        "mapVersion": null
+      },
+      "observedAtSeconds": 600.25
+    },
+    "hp": {
+      "status": "known",
+      "value": 0,
+      "observedAtSeconds": 600.25
+    },
+    "mana": {
+      "status": "unknown",
+      "value": null,
+      "reason": "Данные отсутствуют в синтетическом примере"
+    },
+    "alive": {
+      "status": "known",
+      "value": false,
+      "observedAtSeconds": 600.25
+    },
+    "inventory": {
+      "status": "known",
+      "value": [],
+      "observedAtSeconds": 600.25
+    },
+    "resources": {
+      "status": "known",
+      "value": [
+        {
+          "resourceId": "1",
+          "kind": "ability",
+          "cooldownRemainingSeconds": {
+            "status": "known",
+            "value": 0,
+            "observedAtSeconds": 600.25
+          },
+          "canUse": {
+            "status": "unknown",
+            "value": null,
+            "reason": "Данные отсутствуют в синтетическом примере"
+          }
+        }
+      ],
+      "observedAtSeconds": 600.25
+    },
+    "lastKnownPosition": null,
+    "coverageIds": []
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "coverage",
+    "id": "coverage-1",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "datasetId": "dataset-1",
+    "field": "deaths",
+    "participantSlots": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      128,
+      129,
+      130,
+      131,
+      132
+    ],
+    "window": {
+      "startSeconds": -27.25,
+      "endSeconds": 17.75
+    },
+    "status": "present",
+    "resolutionSeconds": null,
+    "reason": null,
+    "evidenceIds": [
+      "synthetic-contract-proof"
+    ]
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "job",
+    "id": "job-1",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "status": "ready",
+    "dataLevel": "events",
+    "reportStatus": "failed",
+    "limitations": [
+      "Текстовый этап недоступен в примере"
+    ],
+    "error": null
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "episode",
+    "id": "episode-1",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "datasetId": "dataset-1",
+    "playerSlot": 128,
+    "window": {
+      "startSeconds": -27.25,
+      "endSeconds": 17.75
+    },
+    "decisionTimeSeconds": -12.25,
+    "signals": [
+      {
+        "ruleId": "D01",
+        "ruleVersion": "draft",
+        "configSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "evidenceIds": [
+          "death-1",
+          "coverage-1"
+        ]
+      }
+    ],
+    "evidenceIds": [
+      "death-1"
+    ],
+    "review": {
+      "version": 1,
+      "status": "confirmed_error",
+      "explanation": "Учебный пример ручной разметки, не вывод о реальном матче",
+      "alternative": "Учебная альтернатива",
+      "author": "fixture",
+      "reviewedAt": "2026-10-12T01:00:00Z",
+      "material": "map",
+      "perspective": {
+        "mode": "team",
+        "team": "dire"
+      }
+    }
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "report",
+    "id": "report-1",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "datasetId": "dataset-1",
+    "playerSlot": 128,
+    "createdAt": "2026-10-12T02:00:00Z",
+    "claims": [
+      {
+        "kind": "hypothesis",
+        "text": "Учебный вопрос для проверки",
+        "evidenceIds": [
+          "death-1"
+        ]
+      }
+    ],
+    "episodeIds": [
+      "episode-1"
+    ],
+    "reviewRefs": [
+      {
+        "episodeId": "episode-1",
+        "reviewVersion": 1
+      }
+    ],
+    "skippedRules": [
+      {
+        "ruleId": "L01",
+        "reason": "Нет сопоставимой базы"
+      }
+    ],
+    "action": {
+      "kind": "review_episode",
+      "text": "Проверить учебный эпизод",
+      "evidenceIds": [
+        "episode-1"
+      ]
+    },
+    "versions": {
+      "parser": "fixture",
+      "normalization": "0.1.0",
+      "rules": "draft",
+      "skillSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "model": null,
+      "promptSha256": null
+    }
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "hero_state",
+    "id": "state-hidden",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "playerSlot": 128,
+    "gameTimeSeconds": 600.25,
+    "tick": 20000,
+    "perspective": {
+      "mode": "team",
+      "team": "dire"
+    },
+    "visibility": {
+      "status": "known",
+      "value": "hidden",
+      "observedAtSeconds": 600.25
+    },
+    "position": {
+      "status": "unknown",
+      "value": null,
+      "reason": "Данные отсутствуют в синтетическом примере"
+    },
+    "hp": {
+      "status": "unknown",
+      "value": null,
+      "reason": "Данные отсутствуют в синтетическом примере"
+    },
+    "mana": {
+      "status": "unknown",
+      "value": null,
+      "reason": "Данные отсутствуют в синтетическом примере"
+    },
+    "alive": {
+      "status": "unknown",
+      "value": null,
+      "reason": "Данные отсутствуют в синтетическом примере"
+    },
+    "inventory": {
+      "status": "unknown",
+      "value": null,
+      "reason": "Данные отсутствуют в синтетическом примере"
+    },
+    "resources": {
+      "status": "unknown",
+      "value": null,
+      "reason": "Данные отсутствуют в синтетическом примере"
+    },
+    "lastKnownPosition": {
+      "position": {
+        "x": -1200.5,
+        "y": 350.25,
+        "z": null,
+        "coordinateSystem": "world",
+        "mapVersion": null
+      },
+      "observedAtSeconds": 590
+    },
+    "coverageIds": []
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "coverage",
+    "id": "coverage-missing",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "datasetId": "dataset-1",
+    "field": "deaths",
+    "participantSlots": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      128,
+      129,
+      130,
+      131,
+      132
+    ],
+    "window": {
+      "startSeconds": -27.25,
+      "endSeconds": 17.75
+    },
+    "status": "missing",
+    "resolutionSeconds": null,
+    "reason": "Сведения не извлечены",
+    "evidenceIds": []
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "coverage",
+    "id": "coverage-empty",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "datasetId": "dataset-1",
+    "field": "deaths",
+    "participantSlots": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      128,
+      129,
+      130,
+      131,
+      132
+    ],
+    "window": {
+      "startSeconds": 100,
+      "endSeconds": 200
+    },
+    "status": "empty",
+    "resolutionSeconds": null,
+    "reason": null,
+    "evidenceIds": [
+      "synthetic-contract-proof"
+    ]
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "event",
+    "id": "item-1",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "gameTimeSeconds": 300,
+    "tick": null,
+    "data": {
+      "type": "item",
+      "playerSlot": 128,
+      "itemId": "1",
+      "action": "purchased"
+    },
+    "coverageIds": []
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "event",
+    "id": "objective-1",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "gameTimeSeconds": 700,
+    "tick": null,
+    "data": {
+      "type": "objective",
+      "objectId": "tower-dire-top-1",
+      "objectType": "tower",
+      "ownerTeam": "dire",
+      "beneficiaryTeam": "radiant"
+    },
+    "coverageIds": []
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "event",
+    "id": "fight-1",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "gameTimeSeconds": 600,
+    "tick": null,
+    "data": {
+      "type": "fight",
+      "window": {
+        "startSeconds": 600,
+        "endSeconds": 610
+      },
+      "participantSlots": [
+        0,
+        128
+      ],
+      "definition": "Синтетическая группа событий, не алгоритм поиска драки"
+    },
+    "coverageIds": []
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "job",
+    "id": "job-failed",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "status": "failed",
+    "dataLevel": "none",
+    "reportStatus": "not_requested",
+    "limitations": [
+      "Текстовый этап недоступен в примере"
+    ],
+    "error": {
+      "code": "parse_failed",
+      "message": "Синтетическая ошибка",
+      "retryable": false
+    }
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "hero_state",
+    "id": "state-omniscient",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "playerSlot": 128,
+    "gameTimeSeconds": 600.25,
+    "tick": 20000,
+    "perspective": {
+      "mode": "omniscient"
+    },
+    "visibility": {
+      "status": "unknown",
+      "value": null,
+      "reason": "Данные отсутствуют в синтетическом примере"
+    },
+    "position": {
+      "status": "known",
+      "value": {
+        "x": -1200.5,
+        "y": 350.25,
+        "z": null,
+        "coordinateSystem": "world",
+        "mapVersion": null
+      },
+      "observedAtSeconds": 600.25
+    },
+    "hp": {
+      "status": "known",
+      "value": 0,
+      "observedAtSeconds": 600.25
+    },
+    "mana": {
+      "status": "unknown",
+      "value": null,
+      "reason": "Данные отсутствуют в синтетическом примере"
+    },
+    "alive": {
+      "status": "known",
+      "value": false,
+      "observedAtSeconds": 600.25
+    },
+    "inventory": {
+      "status": "known",
+      "value": [],
+      "observedAtSeconds": 600.25
+    },
+    "resources": {
+      "status": "known",
+      "value": [
+        {
+          "resourceId": "1",
+          "kind": "ability",
+          "cooldownRemainingSeconds": {
+            "status": "known",
+            "value": 0,
+            "observedAtSeconds": 600.25
+          },
+          "canUse": {
+            "status": "unknown",
+            "value": null,
+            "reason": "Данные отсутствуют в синтетическом примере"
+          }
+        }
+      ],
+      "observedAtSeconds": 600.25
+    },
+    "lastKnownPosition": null,
+    "coverageIds": []
+  }
+]

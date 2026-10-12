@@ -1,0 +1,30 @@
+{
+  "name": "dota-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.16.0",
+  "engines": {
+    "node": "26.3.0",
+    "npm": "11.16.0"
+  },
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "build:packages": "npm run build --workspace=@dota/contracts && npm run build --workspace=@dota/analysis",
+    "build:ts": "npm run build:packages && npm run build --workspace=@dota/worker && npm run build --workspace=@dota/web",
+    "build:parser": "./services/replay-parser/gradlew --project-dir services/replay-parser --no-daemon build installDist",
+    "build": "npm run build:ts && npm run build:parser",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:web": "npm run dev --workspace=@dota/web --",
+    "dev:worker": "npm run dev --workspace=@dota/worker --",
+    "start:web": "npm run start --workspace=@dota/web --",
+    "start:worker": "npm run start --workspace=@dota/worker --",
+    "start:parser": "./services/replay-parser/build/install/replay-parser/bin/replay-parser",
+    "smoke": "node --test scripts/smoke.test.mjs",
+    "test:contracts": "node --test scripts/contracts.test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Эпики, задачи и статусы разработки персонального сервиса аналитики Dota 2.">
+  <title>Dota API — план разработки</title>
+  <style>
+    :root {
+      --bg: #f5f7f5; --surface: #fff; --ink: #20362e; --muted: #607168;
+      --border: #e0e7e1; --green: #24694a; --green-soft: #eaf3ed;
+      --todo: #5b6b78; --todo-bg: #edf1f4; --running: #1b62a5; --running-bg: #e9f1fc;
+      --blocked: #ab4335; --blocked-bg: #fff0ec; --done: #24694a; --done-bg: #e8f4ec;
+      --skipped: #796847; --skipped-bg: #f5f0e5; --radius: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink); background: var(--bg); font-synthesis: none;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-size: 14px; line-height: 1.55; }
+    button, input, select { font: inherit; }
+    button, summary, select { -webkit-tap-highlight-color: transparent; }
+    button { cursor: pointer; }
+    a { color: var(--green); text-underline-offset: 3px; }
+    :focus-visible { outline: 3px solid #80ad98; outline-offset: 3px; }
+    button, input, select, a { touch-action: manipulation; }
+    button:disabled { cursor: default; opacity: .45; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    .skip-link { position: fixed; left: 20px; top: -70px; z-index: 10; padding: 12px 18px; background: var(--surface); border-radius: 8px; }
+    .skip-link:focus { top: 16px; }
+    .layout { display: grid; grid-template-columns: 244px minmax(0, 1fr); min-height: 100vh; }
+    .sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; padding: 30px 18px 20px; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; }
+    .brand { display: flex; align-items: center; gap: 12px; margin: 0 10px 32px; }
+    .brand-mark { width: 35px; height: 35px; display: grid; place-items: center; color: #fff; background: var(--green); border-radius: 10px; flex: 0 0 auto; }
+    .brand-name { font-size: 16px; font-weight: 750; letter-spacing: -.4px; }
+    .brand-caption { color: var(--muted); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; }
+    .nav-title { color: var(--muted); padding: 0 12px; font-size: 11px; font-weight: 650; letter-spacing: 1.1px; text-transform: uppercase; margin: 24px 0 10px; }
+    .nav-button { width: 100%; border: 0; color: var(--muted); background: transparent; text-align: left; display: flex; align-items: center; gap: 10px; padding: 10px 11px; margin: 2px 0; border-radius: 8px; line-height: 1.35; }
+    .nav-button:hover { background: #f4f6f4; color: var(--ink); }
+    .nav-button[aria-pressed="true"] { color: var(--green); background: var(--green-soft); font-weight: 650; }
+    .nav-code { font-size: 10px; font-weight: 650; font-variant-numeric: tabular-nums; opacity: .9; flex-shrink: 0; }
+    .nav-name { flex: 1; font-size: 12px; }
+    .nav-number { font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .sidebar-note { margin-top: auto; padding: 28px 11px 0; color: var(--muted); font-size: 12px; }
+    .sidebar-note strong { display: block; color: var(--ink); font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+    main { min-width: 0; width: 100%; max-width: 1320px; margin: 0 auto; padding: 34px 42px 28px; }
+    .topline { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; margin-bottom: 26px; }
+    .crumb { display: flex; align-items: center; gap: 10px; }
+    .crumb span:last-child { color: var(--ink); }
+    .scope-tag { display: inline-flex; align-items: center; gap: 7px; color: var(--green); background: var(--green-soft); border: 1px solid #d7e8dc; padding: 5px 10px; border-radius: 30px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .scope-tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+    h1 { margin: 0 0 8px; font-size: clamp(28px, 3vw, 36px); line-height: 1.2; letter-spacing: -1.3px; font-weight: 700; }
+    .subtitle { margin: 0; color: var(--muted); font-size: 14px; }
+    .button { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 40px; padding: 10px 15px; border: 1px solid var(--border); border-radius: 9px; color: var(--ink); background: var(--surface); font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+    .button:hover { border-color: #a4b9aa; background: #f8faf8; }
+    .button.primary { color: #fff; background: var(--green); border-color: var(--green); }
+    .button.primary:hover { background: #1c553b; }
+    .button svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .source-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; margin-top: 13px; }
+    .source-dot { width: 5px; height: 5px; background: #9bada0; border-radius: 50%; }
+    .notice { margin: 16px 0 0; padding: 11px 14px; border: 1px solid #cfe2d5; background: #edf6ef; border-radius: 9px; font-size: 12px; color: var(--green); }
+    .notice.error { background: var(--blocked-bg); color: var(--blocked); border-color: #ebc6bc; }
+    [hidden] { display: none !important; }
+    .overview { margin-top: 26px; padding: 20px 23px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    .progress-head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+    .progress-heading { font-size: 14px; font-weight: 650; }
+    .progress-percent { font-size: 26px; font-weight: 650; letter-spacing: -1px; line-height: 1; font-variant-numeric: tabular-nums; }
+    .progress-track { width: 100%; height: 7px; background: #edf1ed; border-radius: 10px; overflow: hidden; margin: 13px 0 9px; }
+    .progress-fill { height: 100%; width: 0; background: var(--green); border-radius: inherit; transition: width .2s ease; }
+    .progress-caption { color: var(--muted); font-size: 12px; }
+    .progress-caption strong { color: var(--ink); font-weight: 600; }
+    .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 11px; margin: 13px 0 28px; }
+    .stat { position: relative; min-width: 0; padding: 15px 16px; text-align: left; background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: 11px; }
+    .stat:hover { border-color: #a9bbae; }
+    .stat[aria-pressed="true"] { outline: 2px solid var(--green); outline-offset: 1px; }
+    .stat-number { display: block; font-size: 27px; line-height: 1.2; letter-spacing: -.7px; font-variant-numeric: tabular-nums; margin-bottom: 8px; font-weight: 650; }
+    .stat-label { display: flex; gap: 6px; align-items: center; font-size: 11px; font-weight: 500; color: var(--muted); }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--status-color); flex-shrink: 0; }
+    [data-status="TODO"] { --status-color: var(--todo); --status-bg: var(--todo-bg); }
+    [data-status="IN_PROGRESS"] { --status-color: var(--running); --status-bg: var(--running-bg); }
+    [data-status="BLOCKED"] { --status-color: var(--blocked); --status-bg: var(--blocked-bg); }
+    [data-status="DONE"] { --status-color: var(--done); --status-bg: var(--done-bg); }
+    [data-status="SKIPPED"] { --status-color: var(--skipped); --status-bg: var(--skipped-bg); }
+    .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    h2 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -.4px; }
+    .result-count { color: var(--muted); font-size: 12px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 17px; }
+    .search-wrap { flex: 1; min-width: 210px; position: relative; }
+    .search-icon { position: absolute; width: 17px; height: 17px; top: 13px; left: 13px; color: #7a8b80; pointer-events: none; }
+    input[type="search"], select { width: 100%; height: 43px; background: var(--surface); border: 1px solid var(--border); color: var(--ink); border-radius: 9px; font-size: 12px; }
+    input[type="search"] { padding: 10px 12px 10px 39px; }
+    input::placeholder { color: #718078; opacity: 1; }
+    select { padding: 9px 32px 9px 12px; }
+    .status-select { width: 186px; }
+    .mobile-epic { display: none; }
+    .toolbar .button { padding: 10px 13px; }
+    .active-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: -4px 0 15px; color: var(--muted); font-size: 12px; }
+    .text-button { padding: 0; border: 0; color: var(--green); background: none; font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+    .epics { display: grid; gap: 12px; }
+    details.epic { border: 1px solid var(--border); background: var(--surface); border-radius: 12px; overflow: hidden; scroll-margin-top: 20px; }
+    summary { list-style: none; cursor: pointer; }
+    summary::-webkit-details-marker { display: none; }
+    .epic > summary { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 13px; padding: 19px 20px; }
+    .epic > summary:hover { background: #fafbf9; }
+    .epic-code { display: grid; place-items: center; width: 41px; height: 38px; border-radius: 8px; color: #53685b; background: #f0f4ef; font-size: 11px; font-weight: 700; letter-spacing: .2px; }
+    .epic.deferred .epic-code { color: var(--skipped); background: var(--skipped-bg); }
+    .epic-name { font-size: 14px; font-weight: 650; line-height: 1.4; }
+    .epic-caption { color: var(--muted); font-size: 11px; margin-top: 3px; }
+    .epic-progress { display: flex; align-items: center; gap: 9px; font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .mini-track { width: 53px; height: 4px; background: #edf1ed; border-radius: 5px; overflow: hidden; }
+    .mini-fill { height: 100%; background: var(--green); }
+    .chevron { width: 16px; height: 16px; color: #7b8d80; transition: transform .15s ease; flex-shrink: 0; }
+    details[open] > summary > .chevron { transform: rotate(90deg); }
+    .epic-goal { padding: 0 20px 15px 74px; font-size: 12px; color: var(--muted); }
+    .task-list { margin: 0 20px 13px; border-top: 1px solid var(--border); }
+    details.task { border-bottom: 1px solid #edf0ec; scroll-margin-top: 24px; }
+    details.task:last-child { border-bottom: 0; }
+    .task > summary { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto 13px; align-items: center; gap: 12px; padding: 15px 2px; }
+    .task > summary:hover .task-title { color: var(--green); }
+    .task-id { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 10px; color: #6e7c73; }
+    .task-title { font-size: 12px; font-weight: 500; line-height: 1.55; }
+    .status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; padding: 4px 8px; border-radius: 5px; background: var(--status-bg); color: var(--status-color); font-size: 10px; font-weight: 600; line-height: 1.3; }
+    .status .status-dot { width: 5px; height: 5px; }
+    .task .chevron { width: 13px; height: 13px; }
+    .task-body { margin: 0 0 16px 100px; padding: 15px 17px; border: 1px solid #e3e9e2; background: #f8faf7; border-radius: 8px; font-size: 12px; color: #44594b; }
+    .task-field + .task-field { margin-top: 13px; }
+    .task-field-label { color: var(--ink); font-weight: 650; margin-bottom: 4px; }
+    .task-field-value { line-height: 1.75; overflow-wrap: anywhere; }
+    code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .93em; padding: 1px 4px; background: #e9eee7; border-radius: 4px; }
+    .dependency { white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11px; }
+    .task.highlight { background: #f1f7ef; }
+    .task.extra-match { border-left: 2px solid #bccdc0; padding-left: 10px; }
+    .empty { padding: 46px 20px; text-align: center; border: 1px dashed #c9d5cb; border-radius: 12px; color: var(--muted); }
+    .empty-icon { width: 38px; height: 38px; color: #8b9d8f; margin-bottom: 9px; }
+    .empty h3 { margin: 0 0 6px; color: var(--ink); font-size: 15px; font-weight: 600; }
+    .empty p { margin: 0 0 16px; font-size: 12px; }
+    footer { margin-top: 26px; padding-top: 17px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 14px; color: var(--muted); font-size: 11px; }
+    footer p { margin: 0; max-width: 670px; }
+    .page-error { margin: 24px; padding: 20px; border: 1px solid #dbb3a7; border-radius: 10px; background: #fff0ec; color: #8f362c; }
+    @media (min-width: 1650px) { main { padding-top: 45px; } }
+    @media (max-width: 1150px) { .layout { grid-template-columns: 208px minmax(0, 1fr); } .sidebar { padding-left: 12px; padding-right: 12px; } main { padding: 28px 25px; } .stats { gap: 8px; } .stat { padding: 14px 11px; } .stat-label { font-size: 10px; } .task > summary { grid-template-columns: 79px minmax(0, 1fr) auto 13px; gap: 8px; } .task-body { margin-left: 0; } }
+    @media (max-width: 850px) { .layout { display: block; } .sidebar { display: none; } main { padding: 25px 24px; } .mobile-epic { display: block; width: 100%; } .topline { margin-bottom: 23px; } }
+    @media (max-width: 540px) {
+      main { padding: 20px 16px; } .topline { font-size: 11px; } .crumb { gap: 6px; } .scope-tag { font-size: 10px; padding: 4px 8px; }
+      .page-heading { display: block; } .page-heading > .button { margin-top: 18px; width: 100%; } h1 { font-size: 29px; } .subtitle { font-size: 12px; }
+      .overview { margin-top: 22px; padding: 18px; } .progress-heading { font-size: 13px; } .progress-caption { font-size: 11px; }
+      .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 24px; } .stat { padding: 12px 10px; } .stat-number { font-size: 23px; } .stat-label { font-size: 10px; gap: 4px; } .stat .status-dot { width: 5px; height: 5px; }
+      .search-wrap { flex-basis: 100%; } .status-select { flex: 1; width: auto; min-width: 0; } .toolbar > .button { font-size: 11px; }
+      .section-title { flex-wrap: wrap; gap: 4px; } .result-count { font-size: 11px; }
+      .epic > summary { grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; padding: 15px 13px; } .epic > summary > .epic-progress { display: none; } .epic-name { font-size: 12px; } .epic-code { width: 33px; height: 33px; font-size: 10px; }
+      .epic-goal { padding: 0 14px 14px; font-size: 11px; } .task-list { margin: 0 13px 8px; }
+      .task > summary { grid-template-columns: minmax(0, 1fr) auto 12px; gap: 6px 9px; padding: 13px 0; } .task-id { grid-column: 1; grid-row: 1; } .task-title { grid-column: 1 / -1; grid-row: 2; font-size: 12px; } .task > summary > .status { grid-column: 2; grid-row: 1; } .task > summary > .chevron { grid-column: 3; grid-row: 1; }
+      .task-body { padding: 12px; font-size: 11px; } footer { display: block; font-size: 10px; } footer > a { display: inline-block; margin-top: 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }
+    @media print { .sidebar, .toolbar, .page-heading > button, .active-filter, footer, .topline { display: none; } .layout { display: block; } main { max-width: none; padding: 0; } .stat { break-inside: avoid; } details.epic { break-inside: avoid; } body { background: #fff; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">К задачам</a>
+  <div class="layout" id="app" hidden>
+    <aside class="sidebar" aria-label="Навигация по плану">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M4 5h6v6H4zM14 13h6v6h-6z" stroke="currentColor" stroke-width="1.7"/><path d="M14 5h6v4M4 15v4h6M10 8h4v8" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></span>
+        <div><div class="brand-name">Dota API</div><div class="brand-caption">План разработки</div></div>
+      </div>
+      <button class="nav-button" id="all-epics" type="button" aria-pressed="true"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="3" y="3" width="5" height="5" rx="1" stroke="currentColor"/><rect x="12" y="3" width="5" height="5" rx="1" stroke="currentColor"/><rect x="3" y="12" width="5" height="5" rx="1" stroke="currentColor"/><rect x="12" y="12" width="5" height="5" rx="1" stroke="currentColor"/></svg><span class="nav-name">Все эпики</span><span class="nav-number" id="total-badge"></span></button>
+      <div class="nav-title">Этапы проекта</div>
+      <nav id="epic-nav" aria-label="Эпики"></nav>
+      <div class="sidebar-note"><strong>Персональная аналитика Dota 2</strong>От списка матчей до разбора<br>решений на карте.</div>
+    </aside>
+    <main id="main" tabindex="-1">
+      <div class="topline"><div class="crumb"><span>Проект</span><span aria-hidden="true">/</span><span>Dota API</span></div><span class="scope-tag">MVP · карта и таймлайн</span></div>
+      <header>
+        <div class="page-heading"><div><h1>План разработки</h1><p class="subtitle" id="subtitle"></p></div><button class="button primary" id="import-button" type="button"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 13V3m-4 4 4-4 4 4M4 13v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Обновить из Markdown</button></div>
+        <input id="file-input" type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
+        <div class="source-row"><span class="source-dot" aria-hidden="true"></span><span id="source-label"></span></div>
+        <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+      </header>
+      <section aria-label="Общий прогресс">
+        <div class="overview">
+          <div class="progress-head"><span class="progress-heading">Прогресс текущего плана</span><span class="progress-percent" id="progress-percent"></span></div>
+          <div class="progress-track" role="progressbar" aria-label="Завершённые задачи без отложенных" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+          <div class="progress-caption" id="progress-caption"></div>
+        </div>
+        <div class="stats" id="stats"></div>
+      </section>
+      <section aria-labelledby="tasks-heading">
+        <div class="section-title"><h2 id="tasks-heading">Эпики и задачи</h2><span class="result-count" id="result-count" role="status" aria-live="polite"></span></div>
+        <div class="toolbar">
+          <div class="search-wrap"><label class="sr-only" for="search">Поиск по задачам</label><svg class="search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="m13 13 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input id="search" type="search" placeholder="Найти задачу, ID или описание…" autocomplete="off"></div>
+          <div class="status-select"><label class="sr-only" for="status-filter">Статус задачи</label><select id="status-filter"><option value="ALL">Все статусы</option value="TODO">Запланировано</option><option value="IN_PROGRESS">В работе</option><option value="BLOCKED">Заблокировано</option><option value="DONE">Готово</option><option value="SKIPPED">Отложено</option></select></div>
+          <button id="expand-button" class="button" type="button" aria-expanded="false">Развернуть эпики</button>
+          <div class="mobile-epic"><label class="sr-only" for="epic-filter">Выбрать эпик</label><select id="epic-filter"></select></div>
+        </div>
+        <div class="active-filter" id="active-filter" hidden><span id="filter-description"></span><button class="text-button" id="reset-filters" type="button">Сбросить фильтры</button></div>
+        <div class="epics" id="epics"></div>
+        <div class="empty" id="empty" hidden><svg class="empty-icon" viewBox="0 0 40 40" fill="none" aria-hidden="true"><rect x="8" y="6" width="24" height="29" rx="4" stroke="currentColor" stroke-width="1.5"/><path d="M14 14h12M14 20h12M14 26h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><h3>По этим условиям задач нет</h3><p>Попробуйте другой статус, эпик или поисковый запрос.</p><button class="button" id="empty-reset" type="button">Показать все задачи</button></div>
+      </section>
+      <footer><p>Источник статусов — tasks-plan.md. Изменения в файле не подхватываются автоматически: выберите обновлённый план кнопкой сверху. Загруженные данные действуют в этой вкладке; при перезагрузке вернётся исходный снимок.</p><a href="tasks-plan.md" target="_blank" rel="noopener">Открыть Markdown-план ↗</a></footer>
+    </main>
+  </div>
+  <div id="fatal-error" class="page-error" role="alert" hidden></div>
+  <noscript><div class="page-error">Для просмотра интерактивного плана включите JavaScript. Исходные задачи доступны в <a href="tasks-plan.md">tasks-plan.md</a>.</div></noscript>
+  <script id="plan-data" type="application/json">{"sourceName": "tasks-plan.md", "sourceSha256": "e00747df8af0019d3795157957bd11b750b73944dec767bc1d70ae20a654f000", "markdown": "# План задач: персональная аналитика матчей Dota 2\n\nДата: 12 октября 2026 года. Версия плана: 1.1.\n\nПроект: `/Users/user/Projects/dota-api`.\n\nЭтот документ предназначен для реализации в отдельных сессиях. На момент создания в проекте находится только `.agents/skills/dota-match-analysis`; кода приложения нет. Все задачи ниже запланированы, ни одна ещё не выполнена. Запись задачи в этом файле не означает, что её технические предположения уже проверены.\n\n## 1. Цель и согласованный контур\n\nЛичный веб-сервис для одного пользователя. Основной сценарий:\n\n1. Ввести Dota account ID либо SteamID64 и проверить выбранный профиль.\n2. Получить список доступных матчей с пагинацией и фильтрами.\n3. Выбрать матч и нажать «Загрузить и разобрать».\n4. Сервис самостоятельно получает ссылку, скачивает реплей, проверяет его и запускает анализ.\n5. Посмотреть статистику, события и подробный разбор решений с учётом информации, доступной игроку.\n6. Сохранить проверку эпизодов и затем сравнивать собственные сопоставимые матчи.\n\nРеплей загружается по выбранному матчу, а не по факту открытия списка. Сохранённый реплей можно скачать себе. Ручная загрузка `.dem` остаётся резервным способом ввода. Недоступность реплея не скрывает имеющуюся статистику, но ограничивает глубину анализа.\n\nПодробный разбор реплея, включая обзор и контекст решений, входит в целевую первую версию. Промежуточная страница со статистикой — полезный этап, но сама по себе не означает завершение MVP.\n\nРешение пользователя от 12 октября 2026 года: **в MVP используются интерактивная 2D-карта, таймлайн и состояния героев**. Видео отложено на возможное будущее развитие. Эпик E11 сохранён как будущая возможность, его задачи имеют статус `SKIPPED` для текущего объёма и не блокируют выпуск MVP. Повторно согласовывать формат просмотра для первой версии не требуется.\n\n### Предлагаемая техническая основа\n\n| Компонент | Решение | Граница ответственности |\n| --- | --- | --- |\n| Интерфейс и HTTP API | Next.js + TypeScript | Профиль, список матчей, просмотр данных, запуск заданий |\n| Фоновый обработчик | Node.js + TypeScript | Получение данных, скачивание, запуск парсера и анализа |\n| Разбор `.dem` | Kotlin/JVM + Clarity | Извлечение событий и состояний игры в отдельном процессе |\n| Данные | PostgreSQL | Матчи, участники, задания, эпизоды, проверки, отчёты |\n| Очередь | pg-boss в PostgreSQL | Устойчивое выполнение заданий, повторы, ограничения параллелизма |\n| Большие файлы | Локальное хранилище за интерфейсом Storage | Реплеи и сжатые данные временных рядов; возможность перехода на S3 |\n| Источники | OpenDota, при необходимости Steam | Профиль, история, статистика и доступные метаданные реплея |\n| Текстовый разбор | Адаптер к выбранному LLM-провайдеру | Интерпретация проверенных данных по методике skill |\n| Первый запуск | Локально, Docker Compose | Один пользователь; сетевой доступ и публикация не входят в текущий объём |\n\nClarity — Java-библиотека, используемая из Kotlin. Java не требуется как язык собственного парсера. Совместимость обработчиков и аннотаций Clarity с выбранной Kotlin-сборкой проверяется на этапе исследования.\n\n### Открытые решения и необходимые входные данные\n\n| Вопрос | Когда закрыть | Как влияет |\n| --- | --- | --- |\n| ID игрока для проверки интеграции и несколько доступных реплеев | E01-T01 / E01-T02 | Без них нельзя подтвердить работу на матчах пользователя |\n| Какие сведения о позициях, обзоре и ресурсах надёжно извлекаются | E01-T04 | Определяет допустимые выводы; нельзя молча заменить подробный анализ одной статистикой. Извлечение камеры не является условием готовности MVP |\n| LLM-провайдер, модель и предел расходов | E08-T01 | Определяет конфигурацию текстового анализа, но не блокирует историю и парсинг |\n| Лимиты файлов, параллелизма и хранения | После замеров E01, закрепить в E02/E04 | Числа выбираются по измерениям, а не как обещания производительности |\n\n## 2. Методика и обязательные инварианты\n\nИсточник аналитических требований: [dota-match-analysis](.agents/skills/dota-match-analysis/SKILL.md). Skill содержит методику, а не готовый сервис или исполняемый анализатор. Формулы и правила реализуются в коде, инструкции интерпретации применяются при подготовке отчёта.\n\nПеред аналитическими задачами читать необходимые справочники:\n\n- [Источники](.agents/skills/dota-match-analysis/references/sources.md).\n- [Данные и покрытие](.agents/skills/dota-match-analysis/references/data-requirements.md).\n- [Правила D01, D02, L01, I01, F01](.agents/skills/dota-match-analysis/references/analysis-rules.md).\n- [Сравнения](.agents/skills/dota-match-analysis/references/comparisons.md).\n- [Шаблон отчёта](.agents/skills/dota-match-analysis/references/report-template.md).\n- [Наблюдения о провайдерах с датами](.agents/skills/dota-match-analysis/references/session-observations.md).\n\nИнварианты для всех эпиков:\n\n1. Факт, гипотеза и подтверждённый просмотром вывод — разные состояния. Полнота данных не равна уверенности в причине.\n2. Отсутствующее значение не заменяется нулём. Пустой массив, HTTP 200 и флаг `parsed` не подтверждают полноту журнала.\n3. Вывод об отсутствии событий требует подтверждённого покрытия нужных участников и всего окна.\n4. Игрок идентифицируется явно. Не определять роль только по герою или линии; неизвестные роль и MMR не блокируют базовую статистику.\n5. Игровое время хранится отдельно от календарного; сохраняются отрицательное время и корректное соответствие тикам с учётом пауз.\n6. Полное состояние реплея, сведения, доступные команде, и камера игрока — разные представления. Доступность информации не доказывает, что игрок её заметил.\n7. При оценке решения нельзя раскрывать модели скрытое состояние противников или будущие события как информацию игрока в момент выбора. Результат эпизода рассматривается отдельно.\n8. Числа, таймкоды и выводы имеют происхождение. Конфликты источников показываются, зависимые выводы откладываются.\n9. Сравнения воспроизводимы по фильтрам и размерам выборок. Автоматического рейтинга «качество игры по KDA» нет.\n10. Ключи, токены и пароли остаются на сервере; их нет в отчётах, репозитории, логах и запросах к другим провайдерам.\n\n## 3. Работа по задачам в разных сессиях\n\nСтатусы задач: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`, `SKIPPED`. `BLOCKED` сопровождается конкретной причиной и условием разблокировки. `SKIPPED` допустим для условной функции после зафиксированного решения; он не заменяет выполненную задачу.\n\nПорядок работы:\n\n1. Прочитать применимые AGENTS.md, этот файл, код зависимостей и нужные части skill.\n2. Выбрать задачу со статусом `TODO` и выполненными зависимостями. Не считать текст плана доказательством наличия реализации.\n3. Перед изменением кода представить краткий план и получить одобрение, если пользователь ещё не одобрил эту конкретную работу. Это сохраняет пользовательское предпочтение из AGENTS.md; повторно спрашивать уже полученное разрешение не нужно.\n4. Указать `IN_PROGRESS`. Выполнять выбранный объём; связанные изменения разрешены, но соседние эпики автоматически не запускать.\n5. Проверить критерии готовности. Для вычислений, интеграций и восстановления после сбоев нужны содержательные проверки. Простые обратимые правки интерфейса не требуют тестов, повторяющих реализацию.\n6. Обновить статус и журнал в конце документа: изменённые файлы, проверки и результаты, ограничения, новые решения, следующий возможный шаг. Незавершённые критерии не отмечать `DONE`.\n7. Не сохранять секреты и не выдумывать результаты проверок. Изменения scope и контрактов отражать в этом плане и архитектурных заметках.\n\nПример запроса для новой сессии:\n\n> Прочитай tasks-plan.md и применимые AGENTS.md. Возьми E04-T02, проверь зависимости и текущую реализацию. Сначала предложи краткий план изменений для согласования. После реализации проверь критерии готовности и обнови статус задачи и журнал передачи контекста.\n\nЕсли работа не помещается в одну сессию, разбить её на подзадачи с суффиксами `-a`, `-b`, сохранив исходный ID и критерии родительской задачи. Использование разных сессий не означает разрешения на параллельное редактирование одних файлов или автоматическую делегацию.\n\n## 4. Эпики и задачи\n\n### E00. Основа проекта и контракты\n\nРезультат: понятные границы приложения, воспроизводимая сборка и общие форматы данных.\n\n#### E00-T01 — Оформить архитектуру с просмотром на карте\n\nСтатус: TODO. Зависимости: нет.\n\n- Объём: оформить `docs/architecture.md` по согласованному контуру; зафиксировать принятое решение о карте, таймлайне и состояниях героев, локальный режим и границы автоматической оценки решений. Видео отметить как возможное развитие после MVP.\n- Готово, когда: определены компоненты и их связи, оставшиеся открытые вопросы помечены явно; просмотр на карте включён в MVP, видеомодуль исключён из обязательных зависимостей. Выбор формата уже сделан; задача остаётся `TODO`, пока не оформлен архитектурный документ.\n\n#### E00-T02 — Подготовить каркас и сборку проекта\n\nСтатус: TODO. Зависимости: нет; учитывать уже принятые решения E00-T01.\n\n- Объём: создать структуру `apps/web`, `apps/worker`, `services/replay-parser`, `packages/contracts`, `packages/analysis`, `docs`; настроить TypeScript, Gradle Kotlin DSL и фиксируемые версии зависимостей.\n- Готово, когда: web, worker и минимальный Kotlin-процесс собираются и запускаются по инструкции; `.env.example` содержит только имена настроек и безопасные примеры; реплеи, секреты и артефакты сборки исключены из Git.\n\n#### E00-T03 — Определить версии и контракты обмена\n\nСтатус: TODO. Зависимости: E00-T02.\n\n- Объём: задать проверяемые схемы для матча, участника, событий, состояния, покрытия, задания, эпизода и отчёта; транспорт парсера — версия протокола и NDJSON через stdin/stdout либо эквивалентный документированный поток, диагностические сообщения отдельно.\n- Готово, когда: Kotlin и TypeScript согласованно читают контрольные примеры, некорректные сообщения отклоняются; ID передаются без потери точности; зафиксированы единицы времени, nullable-поля, provenance и признаки недоступности. Изменения после E01 оформляются новой версией или явной миграцией чернового контракта.\n\n### E01. Проверка получения и разбора реальных реплеев\n\nРезультат: доказана работоспособность основной цепочки и известны ограничения подробного анализа. Исследовательские компоненты делать переиспользуемыми в последующих адаптерах.\n\n#### E01-T01 — Проверить профиль и историю по ID игрока\n\nСтатус: TODO. Зависимости: нет. Вход: ID игрока от пользователя.\n\n- Объём: проверить OpenDota и при необходимости доступные методы Steam на выбранном профиле; получить несколько матчей и подтвердить соответствие участника. Записать дату, методы и наблюдения без секретов в `docs/data-source-validation.md`.\n- Готово, когда: различаются account_id и SteamID64, показан реальный результат запроса и ограничения истории; отсутствие данных, приватность и ошибка API не смешаны. HTTP 500 отдельного метода не объявляется отказом всего источника. Если для проверки нужен ключ, он запрашивается через подходящую конфигурацию, а не записывается в документ.\n\n#### E01-T02 — Проверить получение файлов выбранных матчей\n\nСтатус: TODO. Зависимости: E01-T01.\n\n- Объём: получить доступную ссылку на реплей, скачать и распаковать файл, сверить match_id; собрать 3–5 доступных контрольных реплеев с происхождением и хешами. Если автоматическая загрузка конкретного матча недоступна, зафиксировать причину; предоставленный пользователем файл пригоден для проверки парсера, но не подтверждает работу скачивания.\n- Готово, когда: хотя бы один реплей получен по цепочке ID игрока → выбранный матч → файл; отдельно записаны недоступные случаи, размер файла и время загрузки. Личные реплеи не добавлены в Git. Если нужный объём примеров получить нельзя, это явно ограничивает последующую проверку.\n\n#### E01-T03 — Проверить Clarity из Kotlin на базовых событиях\n\nСтатус: TODO. Зависимости: E00-T02, E00-T03, E01-T02.\n\n- Объём: подключить Clarity и проверить discovery Kotlin-обработчиков, события, метаданные участников и игровое время; измерить время и память на контрольных реплеях.\n- Готово, когда: выдаются воспроизводимые структурированные данные, match_id и выбранный участник совпадают, смерти и основные итоговые показатели сверены с источником/клиентом; учтены паузы и начало отсчёта. Несовместимый или повреждённый файл завершается понятной ошибкой, без фиктивно успешного результата.\n\n#### E01-T04 — Проверить восстановление обзора и контекста решений\n\nСтатус: TODO. Зависимости: E01-T03.\n\n- Объём: проверить позиции, HP/ману, инвентарь, готовность ресурсов и видимость для команды; сопоставить выбранные моменты с просмотром в Dota 2. Включить переход в туман войны и, когда есть в примерах, невидимость, обнаружение, smoke и изменения видимости. Доступность камеры можно отметить для будущего развития; её извлечение не блокирует MVP с картой.\n- Готово, когда: в `docs/replay-capabilities.md` есть матрица «подтверждено / недоступно / не проверено» с версиями и примерами; определено, какие выводы допустимы. Отсутствие cooldown не трактуется как гарантированная возможность применения. Видимость сущностей не выдаётся за восстановленную полную карту тумана войны.\n- Условие перехода: если ключевой контекст недоступен, зафиксировать ограничения и согласовать способ его проверки/получения в рамках MVP с картой, например ручную проверку эпизода в клиенте. Видеомодуль автоматически не добавляется. Нельзя закрыть требование подробного анализа заменой на итоговую статистику.\n\n### E02. Хранение и устойчивая фоновая обработка\n\nРезультат: данные и задания сохраняются, длительная обработка не зависит от открытой вкладки.\n\n#### E02-T01 — Создать схему данных и миграции\n\nСтатус: TODO. Зависимости: E00-T03, E01-T03.\n\n- Объём: модели профилей, матчей, участников, исходных артефактов, запусков парсера, наборов данных, покрытия, эпизодов, проверок и отчётов. Участник определяется парой match_id + player_slot; account_id может отсутствовать.\n- Готово, когда: миграции применяются к пустой базе, ограничения предотвращают дубли и неверные связи; идентификаторы точны; snapshots и версии отчётов не перезаписывают прежние основания анализа. Есть индексы по игроку/времени матча и матчу/игровому времени событий.\n\n#### E02-T02 — Реализовать хранилище файлов и индексы временных отрезков\n\nСтатус: TODO. Зависимости: E02-T01.\n\n- Объём: интерфейс Storage с локальной реализацией, метаданные и хеши артефактов, сжатые временные отрезки состояний, атомарное завершение записи и очистка временных файлов.\n- Готово, когда: файлы не раздаются по произвольному пути; незавершённый файл не считается доступным; нужный отрезок извлекается без отправки всего реплея браузеру. Правила хранения и резервного копирования определены, исходники не удаляются молча.\n\n#### E02-T03 — Подключить очередь и управление ресурсами\n\nСтатус: TODO. Зависимости: E02-T01, E01-T03.\n\n- Объём: pg-boss, один тяжёлый разбор одновременно как начальная настройка, повторы временных ошибок с задержкой, таймауты, восстановление прерванного задания и отмена с остановкой дочернего процесса.\n- Готово, когда: перезапуск worker не теряет задание; повторное выполнение безопасно; повреждённый файл не создаёт бесконечные повторы. Память, время и размер входа ограничены на основании замеров, а API остаётся отзывчивым.\n\n#### E02-T04 — Собрать жизненный цикл обработки и API состояния\n\nСтатус: TODO. Зависимости: E02-T02, E02-T03.\n\n- Объём: этапы queued → resolving → downloading → parsing → validating → analysing → ready; отдельные исходы unavailable, failed, cancelled и готовность с ограниченными данными. HTTP-запрос запуска возвращает идентификатор задания, UI получает состояние через polling.\n- Готово, когда: повторное нажатие не создаёт дубли активной работы; повторный анализ учитывает хеш входа, версию парсера, правил, skill, модели и контекста. Этапы завершены атомарно; логи связаны по job_id/match_id; частичная статистика и готовность полного отчёта различаются.\n\n### E03. Профиль и список матчей\n\nРезультат: пользователь получает собственную историю внутри сервиса.\n\n#### E03-T01 — Реализовать ввод ID и проверку профиля\n\nСтатус: TODO. Зависимости: E01-T01, E02-T01.\n\n- Объём: ввод Dota account ID/SteamID64, нормализация без потери точности, получение имени/аватара при доступности и сохранение выбранного профиля.\n- Готово, когда: профиль виден пользователю до анализа; произвольное число не преобразуется без проверки типа ID; анонимный участник не связывается с человеком по нику. Смена выбранного профиля не меняет принадлежность старых данных.\n\n#### E03-T02 — Реализовать адаптер истории и обновление\n\nСтатус: TODO. Зависимости: E03-T01, E02-T03.\n\n- Объём: постраничное получение доступных матчей, обновление последних матчей по запросу пользователя, дедупликация, кэш и обработка ограничений провайдера. Переиспользовать результаты E01-T01.\n- Готово, когда: есть пагинация и предсказуемая сортировка; новая выборка дополняет историю; пустой ответ и ошибка различаются; не обещается вся история по одной странице/total_results. Фоновое расписание синхронизации не создаётся без отдельного запроса.\n\n#### E03-T03 — Сделать API списка и фильтров\n\nСтатус: TODO. Зависимости: E03-T02.\n\n- Объём: выдача матчей с фильтрами по периоду, герою и результату, данными участника и состоянием загрузки/анализа; явные правила часового пояса.\n- Готово, когда: навигация по страницам не теряет и не повторяет записи на неизменной выборке, фильтры согласованы с данными; непроверенная доступность реплея не отображается как гарантированная. Чтение списка не запускает массовое скачивание.\n\n#### E03-T04 — Сделать экран профиля и таблицу матчей\n\nСтатус: TODO. Зависимости: E03-T03.\n\n- Объём: ID, профиль, обновление, дата, герой, результат, длительность, K/D/A, состояния и место для действия «Загрузить и разобрать».\n- Готово, когда: работают фильтры и подгрузка; показаны загрузка, пустая история, ограниченный доступ и ошибка с повтором; выбранные фильтры сохраняются в URL либо восстановимом состоянии. До E04-T03 недействующая кнопка не имитирует успешную обработку.\n\n### E04. Скачивание и импорт реплеев из сервиса\n\nРезультат: выбранный матч превращается в проверенный локальный артефакт без ручного поиска файла.\n\n#### E04-T01 — Реализовать поиск источника реплея\n\nСтатус: TODO. Зависимости: E01-T02, E02-T04.\n\n- Объём: адаптер разрешения match_id в доступную ссылку/метаданные с сохранением источника и времени проверки; проверить уже сохранённый артефакт прежде сетевых запросов.\n- Готово, когда: отсутствие ссылки, временная ошибка и подтверждённая недоступность файла различаются; устаревший URL можно переполучить; ссылка сама по себе не считается наличием реплея. Параметры провайдера и ключи не попадают в UI и логи.\n\n#### E04-T02 — Реализовать загрузку, распаковку и проверку файла\n\nСтатус: TODO. Зависимости: E04-T01, E02-T02, E01-T03.\n\n- Объём: потоковое скачивание `.dem`/`.dem.bz2`, распаковка с лимитом результата, проверки формата, хеша, матча и участника; резервная загрузка пользовательского файла через тот же путь валидации.\n- Готово, когда: доступны только ожидаемые источники скачивания с проверкой перенаправлений; HTML вместо реплея, несовпавший match_id, превышение лимита и оборванная загрузка не становятся валидным артефактом. Повтор использует проверенный файл; окончательная запись атомарна, прогресс показывает реально известные данные.\n\n#### E04-T03 — Подключить загрузку к списку и карточке матча\n\nСтатус: TODO. Зависимости: E03-T04, E04-T02.\n\n- Объём: действие «Загрузить и разобрать», отображение этапов/ошибок/повтора, ручной импорт и скачивание сохранённого `.dem` пользователю.\n- Готово, когда: весь путь от строки матча до сохранённого реплея проходит через UI; обновление страницы восстанавливает состояние; два нажатия используют одно задание. Отсутствующий реплей оставляет доступную статистику и понятный резервный путь. Автоматический запуск дальнейшего анализа подключается по мере готовности E05–E08.\n\n### E05. Нормализация событий, состояний и доступной информации\n\nРезультат: версионированный набор данных, на котором можно проверяемо строить аналитику.\n\n#### E05-T01 — Реализовать извлечение событий и статистики\n\nСтатус: TODO. Зависимости: E01-T03, E02-T04, E04-T02.\n\n- Объём: превратить исследовательский парсер в рабочий адаптер; извлекать паспорт матча, участников, итоговые показатели, смерти, покупки, получение/применение предметов при наличии, объекты и доступные временные ряды.\n- Готово, когда: единицы и смысл каждого поля документированы; повторные смерти после выкупа сохранены; покупка не подменяет получение предмета, gold_t не переименован в net worth без подтверждения. Сторона владельца строения и сторона, получившая результат, различаются; нормализованные данные связаны с исходным артефактом.\n\n#### E05-T02 — Реализовать состояния героев и индекс игрового времени\n\nСтатус: TODO. Зависимости: E05-T01, E01-T04.\n\n- Объём: позиции, ресурсы, инвентарь, состояния способностей/предметов и подтверждённые признаки доступности действий. Сохранять изменения с достаточной точностью, делать разреженные снимки для навигации и подробные отрезки для эпизодов.\n- Готово, когда: состояние в контрольные моменты совпадает с проверкой, паузы и отрицательное время обрабатываются; разрешение/точность указаны, пропуски не интерполируются как подтверждённые наблюдения. Готовность cooldown сама по себе не объявляет действие выполнимым при нехватке маны, контроле или иных ограничениях.\n\n#### E05-T03 — Реализовать покрытие и проверку пригодности данных\n\nСтатус: TODO. Зависимости: E05-T01, E05-T02.\n\n- Объём: для набора, участников и временного окна хранить присутствие, подтверждённую пустоту, отсутствие, ошибку или неизвестную семантику; валидировать покрытие по контракту парсера и содержательным сверкам.\n- Готово, когда: правила могут запросить пригодность конкретного окна; усечённый файл и неполный журнал не проходят как полный матч; совпавшие итоговые счётчики не являются единственным доказательством полноты. Конфликт источников сохраняется и блокирует зависимый вывод.\n\n#### E05-T04 — Реализовать представление информации игрока\n\nСтатус: TODO. Зависимости: E05-T02, E05-T03, подтверждённое решение по ограничениям E01-T04.\n\n- Объём: разделить полное состояние и доступные игроку сведения; строить контекст на момент решения с видимыми противниками и отдельно отмеченной последней известной позицией/временем. Если сведения о камере доступны, хранить их отдельно; для MVP с картой они необязательны.\n- Готово, когда: скрытые актуальные позиции, ресурсы противника и будущие события не просачиваются в оценку решения; неизвестная видимость не превращается в «враг не виден». Есть проверки утечек информации и сравнение с контрольными эпизодами. Полный обзор разрешён для отдельного ретроспективного просмотра с явным указанием режима.\n\n### E06. Воспроизводимые метрики и правила skill\n\nРезультат: эпизоды отбираются детерминированно, с основаниями и причинами пропуска.\n\n#### E06-T01 — Реализовать метрики и общий контракт правила\n\nСтатус: TODO. Зависимости: E05-T03.\n\n- Объём: расчёт подтверждённых производных метрик и интерфейс правила: требуемые данные, окно, конфигурация, версия, результат и evidence-ссылки. Различать «применено, сигнал есть», «применено, сигнала нет» и «пропущено».\n- Готово, когда: деление на ноль/неизвестный знаменатель возвращает неопределённость; командные преимущества ориентированы на сторону игрока; значения на 5/10 минутах получены по подтверждённой временной оси. Есть тесты граничных окон, пропусков, формул и стороны Dire.\n\n#### E06-T02 — Реализовать D01 и D02\n\nСтатус: TODO. Зависимости: E06-T01.\n\n- Объём: D01 проверяет отсутствие смертей противника на включительном окне t−15…t+30 только при полном покрытии всех участников; D02 ищет подтверждённую потерю объекта после смерти на t…t+90 с правильными сторонами.\n- Готово, когда: проверены границы интервалов, выкупы, неполные данные и ошибки определения стороны объекта. D01 не применяется на усечённом окне, D02 допускает подтверждённое положительное событие из частичного журнала; ни одно правило не объявляет смерть причиной потери объекта или бесполезной автоматически.\n\n#### E06-T03 — Реализовать I01 и F01\n\nСтатус: TODO. Зависимости: E06-T01.\n\n- Объём: I01 строит известную хронологию 180 секунд после надёжной покупки явно выбранного ключевого предмета. F01 использует подтверждённые границы боя и полные потери обеих команд, затем события объектов за 90 секунд.\n- Готово, когда: пользователь может указать ключевой предмет и план этой игры; без них есть журнал покупок, но нет произвольного «главного тайминга». Для боя зафиксировано определение/источник; отсутствие объектов утверждается только при полном покрытии. Преимущество по потерям героев не называется доказанной стратегической победой.\n\n#### E06-T04 — Объединить сигналы и сформировать набор эпизодов\n\nСтатус: TODO. Зависимости: E06-T02, E06-T03.\n\n- Объём: объединить D01/D02 одной смерти, сохранить основания, выставить порядок по skill и выбрать до трёх основных эпизодов; остальным дать стабильные ID и доступ через API. Подключение L01 предусмотрено после E09-T02.\n- Готово, когда: разные смерти не склеиваются из-за пересечения окон; сохраняются связи боя и вложенных смертей; порядок не выдаётся за шкалу тяжести. «Нет кандидатов» отличается от «недостаточно данных», недостающие эпизоды не генерируются для заполнения шаблона.\n\n### E07. Просмотр матча, эпизодов и ручная проверка\n\nРезультат: пользователь может проверить основания анализа и сохранить осмысленную оценку.\n\n#### E07-T01 — Сделать карточку матча и графики\n\nСтатус: TODO. Зависимости: E03-T04, E05-T03.\n\n- Объём: паспорт матча, выбранный игрок, доступная статистика, графики с временной осью, роль/источник роли, уровень данных и ограничения, влияющие на выводы.\n- Готово, когда: неизвестные значения показаны отдельно от нулей, графики подписаны по реальному смыслу полей; доступны состояния до/после обработки и при недоступном реплее. Отсутствие роли или MMR не блокирует просмотр K/D/A.\n\n#### E07-T02 — Сделать просмотр эпизода на карте с таймлайном\n\nСтатус: TODO. Зависимости: E00-T01, E05-T04, E06-T04, E07-T01.\n\n- Объём: интерактивная 2D-карта, синхронизированный таймлайн, переходы к событиям, позиции/последние наблюдения, панель состояний выбранного игрока и объяснение отбора эпизода. Предусмотреть явный выбор перспективы и отображение неизвестных данных.\n- Готово, когда: выбор времени показывает соответствующий контекст, подложка карты соответствует поддерживаемому патчу, координаты сверены с реплеем/клиентом; пропуски видны, полный обзор явно отделён от перспективы игрока. Карта не выдаётся за точный рендер игрового тумана войны, если извлечены только признаки видимости сущностей. Просмотр карты работает без запущенного клиента Dota 2, а точные окна эпизодов позволяют при необходимости проверить контекст в клиенте вручную.\n\n#### E07-T03 — Реализовать ручную проверку эпизода\n\nСтатус: TODO. Зависимости: E07-T02.\n\n- Объём: статусы «не проверено», «подтверждённая ошибка», «оправданное действие», «неопределённо»; пояснение, сведения об источнике проверки, автор, дата и выполнимая альтернатива для подтверждения ошибки.\n- Готово, когда: пересмотр оценки сохраняет историю; автоматическая гипотеза не меняет статус на подтверждённый; оценка связана с точной версией эпизода/данных. После перепарсинга старая проверка не переносится молча на изменившийся эпизод.\n\n#### E07-T04 — Проверить целостность пользовательского пути\n\nСтатус: TODO. Зависимости: E04-T03, E07-T03.\n\n- Объём: пройти путь от ID игрока до проверки эпизода, включая перезагрузку вкладки, прямые ссылки на матч/эпизод, отсутствие данных и восстановление после ошибки.\n- Готово, когда: выбранный игрок и перспектива не теряются; кнопки и статусы соответствуют реальному серверному состоянию; таймлайн управляется клавиатурой, подписи и графики читаемы. Результат ручной проверки виден после повторного открытия.\n\n### E08. Текстовый аналитический отчёт\n\nРезультат: отчёт на русском, привязанный к фактам и методике; численные расчёты выполняет код.\n\n#### E08-T01 — Подготовить интеграцию LLM и версионирование skill\n\nСтатус: TODO. Зависимости: E02-T04, E06-T04. Вход: выбор провайдера/модели и предел расходов.\n\n- Объём: серверный адаптер провайдера, таймауты/повторы/ограничение объёма, учёт использования; снимок или хеш содержимого skill и применимых справочников для каждого запуска.\n- Готово, когда: конфигурация хранится вне клиентского кода, фиксируются версии модели/инструкций; в LLM не передаётся весь сырой реплей, секреты или лишние данные профиля. Skill не считается автоматически доступным внешнему API только потому, что установлен в Codex.\n\n#### E08-T02 — Реализовать контекст и проверяемую структуру ответа\n\nСтатус: TODO. Зависимости: E08-T01, E05-T04, E07-T03.\n\n- Объём: формировать компактные пакеты эпизодов с evidence-ID, фактами, пригодностью данных, отдельно сведениями на момент решения и результатом; получать структурированные факты, гипотезы, вопросы к просмотру и действия.\n- Готово, когда: формат валидируется, ссылки существуют, числа и таймкоды проверяются по исходным данным; неподтверждённые причины и альтернативы не подаются как установленные. Имена, чат и прочие данные реплея трактуются как данные, не как инструкции. При некорректном ответе сохраняется понятный отказ текстового этапа, а не выдуманный отчёт.\n\n#### E08-T03 — Сохранить и показать версионированный отчёт\n\nСтатус: TODO. Зависимости: E08-T02, E07-T01.\n\n- Объём: сводка, до трёх эпизодов, ссылки на подробности, причины пропуска правил, статус проверки и следующее полезное действие по шаблону skill; повторный запуск с явным сохранением новой версии.\n- Готово, когда: текст согласован с выбранным игроком и актуальной версией проверки; отчёт связан с версиями всех входов. При отказе LLM работают статистика и детерминированные эпизоды; упражнение по неподтверждённой проблеме обозначено как эксперимент либо заменено задачей проверить эпизод.\n\n#### E08-T04 — Проверить качество выводов на контрольных сценариях\n\nСтатус: TODO. Зависимости: E08-T03.\n\n- Объём: регрессионные сценарии для полного/частичного журнала, нулевых убийств команды, неизвестной роли, смерти рядом с объектом без доказанной причины и скрытого противника.\n- Готово, когда: проверки обнаруживают вымышленные числа, ссылки, причинные утверждения и утечки скрытой информации; ручная оценка нескольких реальных отчётов зафиксирована. Полная идентичность текста не требуется, но факты и границы допустимых выводов сохраняются.\n\n### E09. Сравнение собственных матчей и прогресс\n\nРезультат: пользователь видит воспроизводимые сравнения, когда для них хватает данных.\n\n#### E09-T01 — Реализовать сопоставимые выборки\n\nСтатус: TODO. Зависимости: E03-T02, E05-T03, E07-T01.\n\n- Объём: хранить подтверждённую роль, патч, режим, героя и при наличии аспект/группу/план; выбирать предыдущие собственные матчи с явными исключениями и отдельным размером выборки каждой метрики.\n- Готово, когда: текущий матч исключён из базы, победы и поражения учитываются, неизвестные параметры не считаются совпадением. Расширение фильтров требует явного выбора и отображается; матчи с существенными разрывами/уходом помечаются и исключаются из базы типичных полных игр по правилам skill.\n\n#### E09-T02 — Реализовать L01 и экран сравнения\n\nСтатус: TODO. Зависимости: E09-T01, E06-T04.\n\n- Объём: сравнить показатель на 10-й минуте минимум с 10 предыдущими сопоставимыми значениями; медиана, Q1/Q3 с линейной интерполяцией, размер базы и фактическое время снимка; сигнал строго ниже Q1.\n- Готово, когда: есть проверки n\u003c10, отсутствующей роли/патча, нулевого IQR, границы Q1 и различного покрытия метрик; сигналы подключены к эпизодам и отчёту. Недостаточная база даёт фактические значения без ложной «нормы» и выдуманного таймкода ошибки.\n\n#### E09-T03 — Реализовать наблюдение за действием в пяти играх\n\nСтатус: TODO. Зависимости: E07-T03, E08-T03, E09-T01.\n\n- Объём: пользователь выбирает одно наблюдаемое действие/эксперимент, фиксирует подходящие возможности, выполнения, пропуски и неопределённые случаи в пяти подходящих играх.\n- Готово, когда: отсутствие возможности не считается успехом или провалом; доли считаются через суммарные числители/знаменатели, а не среднее процентов. Победы и MMR показаны как контекст, изменение результатов не приписывается упражнению причинно.\n\n### E10. Локальный запуск, восстановление и приёмка\n\nРезультат: сервис можно установить, использовать и восстановить по инструкции в новой сессии.\n\n#### E10-T01 — Подготовить запуск, диагностику и резервное копирование\n\nСтатус: TODO. Зависимости: E02-T04, E04-T03, E05-T04, E08-T03.\n\n- Объём: Docker Compose, миграции, постоянные volumes, настройки источников/LLM, health-check, логи стадий и измерения времени/памяти/размера; инструкции резервного копирования базы вместе с артефактами.\n- Готово, когда: новый запуск воспроизводим по README, доступ по умолчанию ограничен локальной машиной; перезапуск сохраняет данные; проверено восстановление копии. Очистка временных файлов не удаляет используемые реплеи и основания отчётов. Ошибки и использование LLM диагностируются без секретов.\n\n#### E10-T02 — Провести сквозную приёмку и проверки отказов\n\nСтатус: TODO. Зависимости: E07-T04, E08-T04, E10-T01.\n\n- Объём: ID игрока → история → загрузка выбранного реплея → Kotlin/Clarity → контекст → отчёт → проверка эпизода; отдельно недоступный реплей, частичный набор, неподдерживаемый файл, лимит API, повторное нажатие и остановка worker.\n- Готово, когда: протокол приёмки содержит фактические результаты, версии, замеры и ограничения. Нет утечек информации полной карты в оценку решения, потери заданий или дублирующих запусков. При неизвестном покрытии зависимые правила пропущены с объяснением.\n\n#### E10-T03 — Оформить передачу проекта и релизный чек-лист\n\nСтатус: TODO. Зависимости: E10-T02; для завершения этапа прогресса — также E09-T02, E09-T03.\n\n- Объём: README с запуском, настройкой ID/источников, действиями при недоступном реплее, ограничениями парсера и процедурой обновления; обновить архитектуру и этот план.\n- Готово, когда: из новой сессии понятны текущее состояние, команды проверки и незакрытые риски; статус релиза соответствует критериям раздела 5. Публичное размещение, отдельные аккаунты пользователей и расписания остаются вне выполненного объёма.\n\n### E11. Видео эпизодов внутри браузера — отложено за пределы MVP\n\nРешение пользователя от 12 октября 2026 года: первая версия использует карту; видео возможно когда-нибудь позже. Задачи E11 имеют статус `SKIPPED` для текущего плана, не выполняются и не входят в критерии готовности MVP. Их описание сохранено для будущего развития; возвращать их в `TODO` следует только по отдельному запросу пользователя. Clarity извлекает данные, а запись видео потребовала бы дополнительного компонента с клиентом Dota 2. Подробный разбор и ручная проверка эпизодов на карте остаются обязательными для MVP.\n\n#### E11-T01 — Проверить запись эпизода с перспективой игрока\n\nСтатус: SKIPPED (вне MVP по решению пользователя от 2026-10-12). Будущие зависимости: E00-T01, E01-T02, E01-T04.\n\n- Объём: на выбранной машине с клиентом Dota 2 проверить воспроизведение реплея, переход к времени, правильную перспективу/обзор, запись и экспорт клипа. Зафиксировать требования к окружению и степень автоматизации.\n- Готово, когда: реальный клип соответствует выбранному игроку и отрезку; измерены длительность подготовки, запись и размер. Если автоматизация недоступна, ручная запись/импорт или изменение scope согласованы явно; фоновой обработки без запущенного клиента не обещаем.\n\n#### E11-T02 — Реализовать задания записи и хранение клипов\n\nСтатус: SKIPPED (вне MVP по решению пользователя от 2026-10-12). Будущие зависимости: E11-T01, E02-T04, E06-T04.\n\n- Объём: отдельный обработчик на машине с Dota 2 либо согласованный импорт клипов; очереди записи, файл результата, перспектива, игровое окно и соответствие видеовремени игровому с учётом пауз.\n- Готово, когда: повтор не создаёт ненужные копии, сбой/отсутствие клиента видны, клип привязан к исходному реплею и эпизоду. Веб-сервер не ждёт запись в HTTP-запросе, файлы выдаются из хранилища с контролем доступа.\n\n#### E11-T03 — Синхронизировать видео и аналитический контекст\n\nСтатус: SKIPPED (вне MVP по решению пользователя от 2026-10-12). Будущие зависимости: E11-T02, E07-T02.\n\n- Объём: плеер, переходы по событиям, синхронизация таймлайна/панели ресурсов, видимые перспектива и обрезанные границы клипа; подключение ручной проверки.\n- Готово, когда: перемотка показывает тот же момент и перспективу, что текст/состояния; несовместимый или отсутствующий клип не выдаётся за проверенный просмотр. Сохранённая оценка указывает, какой материал действительно просмотрен.\n\n## 5. Порядок выполнения и контрольные точки\n\nНе начинать с красивого дашборда, пока не проверена доступность нужных данных. При этом задачи истории и инфраструктуры могут выполняться последовательно в независимых сессиях, пока ожидаются входные данные для обзора. Зависимости задач важнее номера эпика.\n\n| Контрольная точка | Необходимые задачи | Проверяемый результат |\n| --- | --- | --- |\n| M0. Техническая осуществимость | E00-T02/T03, E01-T01…T04 | Реальный путь от ID до файла и разбора; матрица возможностей обзора; известны ограничения |\n| M1. Матчи и импорт через сервис | E02, E03, E04 | Пользователь выбирает матч из истории, сервер загружает файл, состояние переживает перезагрузку |\n| M2. Подробный просмотр на карте и проверка | E00-T01, E05, E06, E07 | Карта, таймлайн и состояния синхронизированы; контекст событий доступен и проверяем; полнота и перспектива не подменяются предположениями |\n| M3. Первая версия персонального разбора | M2, E08, E10 | Доказательная статистика, эпизоды, текстовый отчёт и ручная проверка работают сквозным путём |\n| M4. Сравнения и прогресс | M3, E09 | L01 и наблюдение за действием используют корректную собственную базу |\n\nE10-T03 допускает две фиксации: готовность M3 и последующее обновление для M4. E09 не обязателен для первого сквозного отчёта; недостаток сопоставимых матчей не должен блокировать разбор отдельного матча.\n\nРекомендуемый старт следующей сессии: E00-T01 — оформить архитектуру с уже выбранной картой — и получить входные данные для E01-T01. Затем E00-T02/T03 и проверка E01 до развёртывания полной функциональности. Эпик E11 не входит в этот порядок выполнения.\n\nКритерии M3:\n\n- Пользователь вводит ID, видит доступную историю и запускает загрузку из списка.\n- Сервер действительно сохраняет и разбирает выбранный реплей на Kotlin/JVM + Clarity.\n- Доступность обзора и контекста доказана для поддержанных случаев; ограничения видны, неподдержанные выводы не генерируются.\n- Можно открыть эпизод, проверить сведения, отличить факт от гипотезы и сохранить результат проверки.\n- Отчёт воспроизводимо связан с данными и версиями; повторный запуск и восстановление после сбоев проверены.\n- В сервисе работают интерактивная карта, таймлайн и панель состояний героев; видеомодуль не является условием готовности MVP.\n\n## 6. Объём, который требует отдельного решения\n\n- Видео эпизодов внутри браузера: отложенный эпик E11, возвращение к нему возможно после MVP по отдельному запросу.\n- Публичная регистрация, многопользовательские профили, платежи и публикация сервиса.\n- Автоматическое расписание синхронизации/скачивания всех новых матчей: текущий сценарий запускается пользователем.\n- Собственный Steam Game Coordinator-клиент с отдельным аккаунтом, если доступных источников окажется недостаточно. Это возможное решение после исследования, не скрытая обязательная зависимость.\n- Автоматическое доказательство причин ошибок, полный игровой 3D-движок в браузере, универсальная норма таймингов и точный MMR без источника.\n- Масштабирование на большой поток пользователей. Для текущего проекта важнее измеренная работоспособность на собственных матчах.\n\n## 7. Ориентиры для проверки технических предположений\n\nПросмотрены при проектировании 12 октября 2026 года; перед реализацией версионно-зависимые детали проверять заново. Эти ссылки подтверждают возможности библиотек/API, но не доступность конкретных матчей пользователя.\n\n- [OpenDota API](https://docs.opendota.com/) — профиль, история, фильтры и данные матчей.\n- [OpenDota core](https://github.com/odota/core) и [типы](https://github.com/odota/core/blob/master/global.d.ts) — происхождение данных и необязательный replay_url.\n- [Clarity](https://github.com/skadistats/clarity) и [примеры](https://github.com/skadistats/clarity-examples) — обработка событий, сущностей, позиций и состояний.\n- [Kotlin / Java interoperability](https://kotlinlang.org/docs/java-interop.html) — использование Java-библиотеки из Kotlin.\n- [pg-boss](https://github.com/timgit/pg-boss) — фоновые задания в PostgreSQL.\n\n## 8. Журнал сессий и передача контекста\n\nПосле каждой сессии добавлять строку; подробности при необходимости помещать ниже таблицы. Не заменять этим обновление статуса самой задачи.\n\n| Дата | Задачи | Изменения и проверки | Ограничения / следующий шаг |\n| --- | --- | --- | --- |\n| 2026-10-12 | Планирование | Создан tasks-plan.md: 12 эпиков, 43 задачи, зависимости и критерии готовности. Код приложения не создавался; реальные API-запросы на матчах пользователя и разбор реплеев не выполнялись. | Нужны ID игрока и решение о формате просмотра. Следующая задача: E00-T01, затем E01-T01 и каркас E00-T02. |\n| 2026-10-12 | Решение о формате MVP | Пользователь выбрал карту, таймлайн и состояния героев. Обновлены E00-T01, E01-T04, E05-T04, E07-T02, E10-T02 и контрольные точки. Три задачи E11 переведены в SKIPPED; видео сохранено как возможное развитие. Статусы: 40 TODO, 3 SKIPPED. | Вопрос формата закрыт. Нужен ID игрока; E00-T01 остаётся TODO для оформления архитектуры. Зависимости проверены: активные задачи не зависят от E11, циклов нет. |\n\nШаблон подробной записи:\n\n```text\nДата и задача:\nИтоговый статус:\nЧто сделано:\nИзменённые файлы:\nПроверки и фактические результаты:\nВерсии и новые решения:\nЧто не удалось проверить и почему:\nУсловие разблокировки, если задача BLOCKED:\nСледующая рекомендуемая задача:\n```\n"}</script>
+  <script>
+  (() => {
+  'use strict';
+  const STATUS = {
+    TODO: { label: 'Запланировано', task: 'Запланировано' },
+    IN_PROGRESS: { label: 'В работе', task: 'В работе' },
+    BLOCKED: { label: 'Заблокировано', task: 'Заблокировано' },
+    DONE: { label: 'Готово', task: 'Готово' },
+    SKIPPED: { label: 'Отложено', task: 'Отложено' }
+  };
+  const $ = id => document.getElementById(id);
+  const state = { plan: null, query: '', status: 'ALL', epic: 'ALL', openEpics: new Set(), openTasks: new Set(), source: '' };
+  const fold = value => value.toLocaleLowerCase('ru-RU').replace(/ё/g, 'е');
+  const plural = (n, one, few, many) => (n % 100 >= 11 && n % 100 <= 14) ? many : n % 10 === 1 ? one : n % 10 >= 2 && n % 10 <= 4 ? few : many;
+  const taskCount = n => `${n} ${plural(n, 'задача', 'задачи', 'задач')}`;
+  const el = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  function chevron() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 20 20');
+    svg.setAttribute('class', 'chevron');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS(svg.namespaceURI, 'path');
+    path.setAttribute('d', 'm7 5 5 5-5 5');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', 'currentColor');
+    path.setAttribute('stroke-width', '1.6');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    svg.append(path);
+    return svg;
+  }
+  function parseMarkdown(markdown) {
+    const epics = [], ids = new Set();
+    let epic = null, task = null, fenced = false;
+    for (const rawLine of markdown.replace(/^\uFEFF/, '').split(/\r?\n/)) {
+      const line = rawLine.trimEnd();
+      if (/^\s*(```|~~~)/.test(line)) { fenced = !fenced; continue; }
+      if (fenced) continue;
+      const epicMatch = line.match(/^###\s+(E\d{2})\.\s+(.+)$/);
+      const taskMatch = line.match(/^####\s+(E\d{2}-T\d{2}(?:-[a-z])?)\s+[—–-]\s+(.+)$/i);
+      if (epicMatch) {
+        if (ids.has(epicMatch[1])) throw new Error(`Повторяется ID эпика ${epicMatch[1]}.`);
+        ids.add(epicMatch[1]);
+        epic = { id: epicMatch[1], title: epicMatch[2], description: [], tasks: [] };
+        epics.push(epic); task = null;
+      } else if (taskMatch) {
+        if (!epic || !taskMatch[1].startsWith(`${epic.id}-`)) throw new Error(`Задача ${taskMatch[1]} находится вне своего эпика.`);
+        if (ids.has(taskMatch[1])) throw new Error(`Повторяется ID задачи ${taskMatch[1]}.`);
+        ids.add(taskMatch[1]);
+        task = { id: taskMatch[1], title: taskMatch[2], epicId: epic.id, lines: [] };
+        epic.tasks.push(task);
+      } else if (/^#{1,3}\s/.test(line)) {
+        epic = null; task = null;
+      } else if (task) {
+        task.lines.push(line);
+      } else if (epic && line.trim()) {
+        epic.description.push(line.replace(/^Результат:\s*/, ''));
+      }
+    }
+    const tasks = epics.flatMap(item => item.tasks);
+    if (!tasks.length) throw new Error('В файле не найдены задачи. Выберите tasks-plan.md с заголовками E00-T01 и строками «Статус: …».');
+    for (const item of tasks) {
+      const statusLines = item.lines.filter(line => /^Статус:/.test(line));
+      if (statusLines.length !== 1) throw new Error(`У задачи ${item.id} должна быть одна строка «Статус: …».`);
+      const code = statusLines[0].match(/^Статус:\s*(\w+)/)?.[1];
+      if (!Object.prototype.hasOwnProperty.call(STATUS, code)) throw new Error(`Неизвестный статус у ${item.id}: ${code || 'не указан'}.`);
+      item.status = code;
+      item.metadata = statusLines[0].replace(/^Статус:\s*\w+\.?\s*/, '').trim();
+      item.fields = [];
+      for (const line of item.lines) {
+        if (/^Статус:/.test(line) || !line.trim()) continue;
+        const field = line.match(/^-\s+([^:]+):\s*(.*)$/);
+        if (field) {
+          item.fields.push({ label: field[1], text: field[2] });
+        } else if (item.fields.length) {
+          item.fields[item.fields.length - 1].text += `\n${line.replace(/^-\s*/, '')}`;
+        } else {
+          item.fields.push({ label: 'Примечание', text: line });
+        }
+      }
+      item.search = fold(`${item.id} ${item.title} ${item.lines.join(' ')} ${STATUS[code].label}`);
+    }
+    for (const item of epics) item.description = item.description.join(' ');
+    const version = markdown.match(/Версия плана:\s*([\d.]+[\d])\.?/i)?.[1] || markdown.match(/Версия плана:\s*(\d+)\./i)?.[1] || '';
+    const date = markdown.match(/^Дата:\s*(.+?)\.\s*Версия плана:/m)?.[1] || '';
+    return { epics, tasks, taskMap: new Map(tasks.map(item => [item.id, item])), version, date };
+  }
+  function appendRichText(parent, text) {
+    const tokens = /(`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\)|\bE\d{2}-T\d{2}(?:-[a-z])?\b)/g;
+    let position = 0, match;
+    while ((match = tokens.exec(text))) {
+      parent.append(document.createTextNode(text.slice(position, match.index)));
+      const token = match[0];
+      let node;
+      if (token.startsWith('`')) node = el('code', '', token.slice(1, -1));
+      else if (token.startsWith('**')) node = el('strong', '', token.slice(2, -2));
+      else if (token.startsWith('[')) {
+        const link = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+        const href = link[2].trim();
+        if (/^https?:\/\//i.test(href) || /^(?:\.\/)?(?:\.agents|docs)\/[\w./-]+(?:#[\w-]+)?$/.test(href)) {
+          node = el('a', '', link[1]); node.href = href; node.target = '_blank'; node.rel = 'noopener noreferrer';
+        } else node = document.createTextNode(link[1]);
+      } else if (state.plan.taskMap.has(token)) {
+        node = el('a', 'dependency', token); node.href = `#${token}`; node.dataset.taskLink = token;
+        node.title = `${state.plan.taskMap.get(token).title} · ${STATUS[state.plan.taskMap.get(token).status].label}`;
+      } else node = document.createTextNode(token);
+      parent.append(node); position = tokens.lastIndex;
+    }
+    parent.append(document.createTextNode(text.slice(position)));
+  }
+  function counts(tasks) {
+    const result = Object.fromEntries(Object.keys(STATUS).map(key => [key, 0]));
+    for (const task of tasks) result[task.status]++;
+    return result;
+  }
+  function badge(code) {
+    const node = el('span', 'status'); node.dataset.status = code;
+    const dot = el('span', 'status-dot'); dot.setAttribute('aria-hidden', 'true');
+    node.append(dot, document.createTextNode(STATUS[code].task));
+    return node;
+  }
+  function renderOverview() {
+    const { tasks, epics, version, date } = state.plan, tally = counts(tasks);
+    const active = tasks.length - tally.SKIPPED;
+    const percentage = active ? Math.round(tally.DONE / active * 100) : 0;
+    $('subtitle').textContent = `${epics.length} ${plural(epics.length, 'эпик', 'эпика', 'эпиков')} · ${taskCount(tasks.length)} · от импорта матчей до аналитики`;
+    $('total-badge').textContent = tasks.length;
+    $('source-label').textContent = [state.source, version ? `версия ${version}` : '', date].filter(Boolean).join(' · ');
+    $('progress-percent').textContent = active ? `${percentage}%` : '—';
+    $('progress-track').setAttribute('aria-valuenow', percentage);
+    $('progress-track').setAttribute('aria-valuetext', active ? `Выполнено ${tally.DONE} из ${active} задач` : 'В текущем плане нет задач');
+    $('progress-fill').style.width = `${percentage}%`;
+    $('progress-caption').replaceChildren();
+    $('progress-caption').append(el('strong', '', active ? `Выполнено ${tally.DONE} из ${active}` : 'В текущем плане нет задач'));
+    $('progress-caption').append(document.createTextNode(tally.SKIPPED ? ` · Отложено: ${tally.SKIPPED}, не учитываются в прогрессе.` : ' · Все задачи учитываются в прогрессе.'));
+    $('stats').replaceChildren();
+    for (const [key, info] of Object.entries(STATUS)) {
+      const button = el('button', 'stat'); button.type = 'button'; button.dataset.status = key;
+      button.setAttribute('aria-pressed', String(state.status === key));
+      button.setAttribute('aria-label', `${info.label}: ${tally[key]}. Фильтровать задачи.`);
+      button.append(el('span', 'stat-number', tally[key]));
+      const label = el('span', 'stat-label');
+      const dot = el('span', 'status-dot'); dot.setAttribute('aria-hidden', 'true');
+      label.append(dot, document.createTextNode(info.label)); button.append(label);
+      button.addEventListener('click', () => { state.status = state.status === key ? 'ALL' : key; syncControls(); renderTasks(); updateSelectedControls(); });
+      $('stats').append(button);
+    }
+  }
+  function renderNav() {
+    $('epic-nav').replaceChildren(); $('epic-filter').replaceChildren();
+    const all = el('option', '', 'Все эпики'); all.value = 'ALL'; $('epic-filter').append(all);
+    for (const epic of state.plan.epics) {
+      const tally = counts(epic.tasks), active = epic.tasks.length - tally.SKIPPED;
+      const button = el('button', 'nav-button'); button.type = 'button'; button.dataset.epic = epic.id;
+      button.title = epic.title; button.setAttribute('aria-pressed', String(state.epic === epic.id));
+      button.append(el('span', 'nav-code', epic.id), el('span', 'nav-name', epic.title.replace(/\s+—\s+.+$/, '')), el('span', 'nav-number', active ? `${tally.DONE}/${active}` : 'позже'));
+      button.addEventListener('click', () => selectEpic(epic.id)); $('epic-nav').append(button);
+      const option = el('option', '', `${epic.id} · ${epic.title}`); option.value = epic.id; $('epic-filter').append(option);
+    }
+  }
+  function isFiltered() { return !!(state.query.trim() || state.status !== 'ALL' || state.epic !== 'ALL'); }
+  function matches(task, epic) {
+    const query = fold(state.query.trim());
+    return (state.status === 'ALL' || task.status === state.status) && (!query || task.search.includes(query) || fold(`${epic.id} ${epic.title}`).includes(query));
+  }
+  function taskNode(task) {
+    const details = el('details', 'task'); details.id = task.id; details.dataset.status = task.status;
+    details.open = state.openTasks.has(task.id);
+    const summary = el('summary');
+    summary.append(el('span', 'task-id', task.id), el('span', 'task-title', task.title), badge(task.status), chevron());
+    details.append(summary);
+    const body = el('div', 'task-body');
+    for (const field of task.fields) {
+      const node = el('div', 'task-field');
+      const labels = { 'Объём': 'Что сделать', 'Готово, когда': 'Критерии готовности' };
+      node.append(el('div', 'task-field-label', labels[field.label] || field.label));
+      const value = el('div', 'task-field-value'); appendRichText(value, field.text); node.append(value); body.append(node);
+    }
+    if (task.metadata) {
+      const node = el('div', 'task-field'); node.append(el('div', 'task-field-label', 'Зависимости и условия'));
+      const value = el('div', 'task-field-value'); appendRichText(value, task.metadata); node.append(value); body.append(node);
+    }
+    details.append(body);
+    details.addEventListener('toggle', () => {
+      if (details.isConnected) details.open ? state.openTasks.add(task.id) : state.openTasks.delete(task.id);
+    });
+    return details;
+  }
+  function renderTasks() {
+    $('epics').replaceChildren();
+    let shown = 0;
+    for (const epic of state.plan.epics) {
+      if (state.epic !== 'ALL' && state.epic !== epic.id) continue;
+      const visible = epic.tasks.filter(task => matches(task, epic));
+      if (!visible.length) continue;
+      shown += visible.length;
+      const tally = counts(epic.tasks), active = epic.tasks.length - tally.SKIPPED;
+      const details = el('details', `epic${!active ? ' deferred' : ''}`); details.id = epic.id;
+      details.open = isFiltered() || state.openEpics.has(epic.id);
+      const summary = el('summary'); summary.append(el('span', 'epic-code', epic.id));
+      const name = el('div'); name.append(el('div', 'epic-name', epic.title));
+      const caption = !active ? `${taskCount(epic.tasks.length)} · за пределами текущего плана` : `${taskCount(epic.tasks.length)} · выполнено: ${tally.DONE}${tally.SKIPPED ? ` · отложено: ${tally.SKIPPED}` : ''}`;
+      name.append(el('div', 'epic-caption', caption)); summary.append(name);
+      const progress = el('span', 'epic-progress');
+      if (active) {
+        const track = el('span', 'mini-track'), fill = el('span', 'mini-fill');
+        fill.style.display = 'block'; fill.style.width = `${tally.DONE / active * 100}%`;
+        track.setAttribute('aria-hidden', 'true'); track.append(fill);
+        progress.append(track, el('span', '', `${tally.DONE}/${active}`));
+      } else progress.append(badge('SKIPPED'));
+      summary.append(progress, chevron()); details.append(summary);
+      if (epic.description) {
+        const goal = el('div', 'epic-goal'); appendRichText(goal, epic.description); details.append(goal);
+      }
+      const list = el('div', 'task-list'); for (const task of visible) list.append(taskNode(task)); details.append(list);
+      details.addEventListener('toggle', () => {
+        if (!details.isConnected) return;
+        details.open ? state.openEpics.add(epic.id) : state.openEpics.delete(epic.id);
+        updateExpandButton();
+      });
+      $('epics').append(details);
+    }
+    $('result-count').textContent = `Показано: ${shown} из ${state.plan.tasks.length}`;
+    $('empty').hidden = shown !== 0;
+    $('active-filter').hidden = !isFiltered();
+    $('filter-description').textContent = [state.epic !== 'ALL' ? `Эпик ${state.epic}` : '', state.status !== 'ALL' ? STATUS[state.status].label : '', state.query.trim() ? `Поиск: «${state.query.trim()}»` : ''].filter(Boolean).join(' · ');
+    updateExpandButton();
+  }
+  function updateExpandButton() {
+    const epics = [...document.querySelectorAll('details.epic')];
+    const expanded = epics.length > 0 && epics.every(epic => epic.open);
+    $('expand-button').textContent = expanded ? 'Свернуть эпики' : 'Развернуть эпики';
+    $('expand-button').setAttribute('aria-expanded', String(expanded));
+    $('expand-button').disabled = !epics.length;
+  }
+  function updateSelectedControls() {
+    $('all-epics').setAttribute('aria-pressed', String(state.epic === 'ALL'));
+    document.querySelectorAll('#epic-nav button').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.epic === state.epic)));
+    document.querySelectorAll('#stats button').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.status === state.status)));
+  }
+  function syncControls() { $('search').value = state.query; $('status-filter').value = state.status; $('epic-filter').value = state.epic; }
+  function selectEpic(id) { state.epic = id; syncControls(); renderTasks(); updateSelectedControls(); }
+  function resetFilters() { state.query = ''; state.status = 'ALL'; state.epic = 'ALL'; syncControls(); renderTasks(); updateSelectedControls(); }
+  function revealTask(id) {
+    const task = state.plan.taskMap.get(id); if (!task) return;
+    state.query = ''; state.status = 'ALL'; state.epic = task.epicId;
+    state.openEpics.add(task.epicId); state.openTasks.add(id);
+    syncControls(); renderTasks(); updateSelectedControls();
+    const node = $(id); node.classList.add('highlight');
+    node.querySelector('summary').focus({ preventScroll: true });
+    node.scrollIntoView({ block: 'center', behavior: 'instant' });
+    try { history.replaceState(null, '', `#${id}`); } catch { /* File previews may disallow history changes. */ }
+  }
+  function notify(text, error = false) {
+    $('notice').textContent = text; $('notice').hidden = false;
+    $('notice').classList.toggle('error', error);
+    $('notice').setAttribute('role', error ? 'alert' : 'status');
+  }
+  function installPlan(plan, source) {
+    state.plan = plan; state.source = source; state.query = ''; state.status = 'ALL'; state.epic = 'ALL';
+    state.openEpics = new Set(plan.epics.length ? [plan.epics[0].id] : []); state.openTasks = new Set();
+    renderOverview(); renderNav(); syncControls(); renderTasks(); updateSelectedControls();
+  }
+  try {
+    const snapshot = JSON.parse($('plan-data').textContent);
+    installPlan(parseMarkdown(snapshot.markdown), `Снимок ${snapshot.sourceName}`);
+    $('app').hidden = false;
+    $('search').addEventListener('input', event => { state.query = event.target.value; renderTasks(); });
+    $('status-filter').addEventListener('change', event => { state.status = event.target.value; renderTasks(); updateSelectedControls(); });
+    $('epic-filter').addEventListener('change', event => selectEpic(event.target.value));
+    $('all-epics').addEventListener('click', resetFilters);
+    $('reset-filters').addEventListener('click', resetFilters);
+    $('empty-reset').addEventListener('click', resetFilters);
+    $('expand-button').addEventListener('click', () => {
+      const epics = [...document.querySelectorAll('details.epic')];
+      const shouldOpen = !epics.every(epic => epic.open);
+      for (const epic of epics) { epic.open = shouldOpen; shouldOpen ? state.openEpics.add(epic.id) : state.openEpics.delete(epic.id); }
+      updateExpandButton();
+    });
+    $('epics').addEventListener('click', event => {
+      const link = event.target.closest('a[data-task-link]');
+      if (link && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); revealTask(link.dataset.taskLink); }
+    });
+    $('import-button').addEventListener('click', () => { $('file-input').value = ''; $('file-input').click(); });
+    $('file-input').addEventListener('change', async event => {
+      const file = event.target.files[0]; if (!file) return;
+      $('import-button').disabled = true;
+      try {
+        if (file.size > 2 * 1024 * 1024) throw new Error('Файл больше 2 МБ. Выберите Markdown-план без больших вложений.');
+        const plan = parseMarkdown(await file.text());
+        installPlan(plan, `Загружен ${file.name}`);
+        notify(`План обновлён: ${taskCount(plan.tasks.length)}. Данные загружены только в эту вкладку, исходный Markdown не изменён.`);
+        try { history.replaceState(null, '', location.pathname + location.search); } catch { /* Optional navigation state. */ }
+      } catch (error) {
+        notify(`Не удалось обновить план. ${error.message} Текущие данные сохранены.`, true);
+      } finally { $('import-button').disabled = false; }
+    });
+    window.addEventListener('hashchange', () => revealTask(location.hash.slice(1)));
+    if (location.hash) revealTask(location.hash.slice(1));
+  } catch (error) {
+    $('app').hidden = true; $('fatal-error').hidden = false;
+    $('fatal-error').textContent = `Не удалось открыть план: ${error.message}`;
+  }
+})();
+
+  </script>
+</body>
+</html>

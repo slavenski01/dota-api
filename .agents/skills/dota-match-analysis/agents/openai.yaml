@@ -1,0 +1,4 @@
+interface:
+  display_name: "Аналитика матчей Dota 2"
+  short_description: "Источники, показатели и разбор матчей Dota 2"
+  default_prompt: "Используй $dota-match-analysis, чтобы определить необходимые данные и подготовить аналитический отчёт по указанным матчам Dota 2."

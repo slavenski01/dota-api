@@ -1,0 +1,2021 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://dota.invalid/schema/contracts-0.1.0.json",
+  "title": "ContractDocument",
+  "description": "Draft data contract 0.1.0 and NDJSON protocol 1.0.0; no proof of replay extraction capabilities.",
+  "oneOf": [
+    {
+      "$ref": "#/definitions/ContractRecord"
+    },
+    {
+      "$ref": "#/definitions/ProtocolRequest"
+    },
+    {
+      "$ref": "#/definitions/ProtocolMessage"
+    }
+  ],
+  "definitions": {
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "Id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "DecimalId": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "Timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,3})?Z$"
+    },
+    "Team": {
+      "enum": [
+        "radiant",
+        "dire"
+      ]
+    },
+    "PlayerSlot": {
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        128,
+        129,
+        130,
+        131,
+        132
+      ]
+    },
+    "Window": {
+      "type": "object",
+      "properties": {
+        "startSeconds": {
+          "type": "number",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "endSeconds": {
+          "type": "number",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "startSeconds",
+        "endSeconds"
+      ],
+      "additionalProperties": false
+    },
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "enum": [
+            "replay",
+            "opendota",
+            "steam",
+            "manual",
+            "derived",
+            "fixture"
+          ]
+        },
+        "acquiredAt": {
+          "$ref": "#/definitions/Timestamp"
+        },
+        "artifactId": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sourceVersion": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "inputIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Id"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "source",
+        "acquiredAt",
+        "artifactId",
+        "sourceVersion",
+        "inputIds"
+      ],
+      "additionalProperties": false
+    },
+    "Perspective": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "omniscient"
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "team"
+            },
+            "team": {
+              "$ref": "#/definitions/Team"
+            }
+          },
+          "required": [
+            "mode",
+            "team"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "y": {
+          "type": "number",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "z": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "coordinateSystem": {
+          "const": "world"
+        },
+        "mapVersion": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "z",
+        "coordinateSystem",
+        "mapVersion"
+      ],
+      "additionalProperties": false
+    },
+    "NumberObservation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "known"
+            },
+            "value": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "observedAtSeconds": {
+              "type": "number",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "status",
+            "value",
+            "observedAtSeconds"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "unknown",
+                "unavailable",
+                "error"
+              ]
+            },
+            "value": {
+              "type": "null"
+            },
+            "reason": {
+              "$ref": "#/definitions/Text"
+            }
+          },
+          "required": [
+            "status",
+            "value",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "BooleanObservation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "known"
+            },
+            "value": {
+              "type": "boolean"
+            },
+            "observedAtSeconds": {
+              "type": "number",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "status",
+            "value",
+            "observedAtSeconds"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "unknown",
+                "unavailable",
+                "error"
+              ]
+            },
+            "value": {
+              "type": "null"
+            },
+            "reason": {
+              "$ref": "#/definitions/Text"
+            }
+          },
+          "required": [
+            "status",
+            "value",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PositionObservation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "known"
+            },
+            "value": {
+              "$ref": "#/definitions/Position"
+            },
+            "observedAtSeconds": {
+              "type": "number",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "status",
+            "value",
+            "observedAtSeconds"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "unknown",
+                "unavailable",
+                "error"
+              ]
+            },
+            "value": {
+              "type": "null"
+            },
+            "reason": {
+              "$ref": "#/definitions/Text"
+            }
+          },
+          "required": [
+            "status",
+            "value",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "VisibilityObservation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "known"
+            },
+            "value": {
+              "enum": [
+                "visible",
+                "hidden"
+              ]
+            },
+            "observedAtSeconds": {
+              "type": "number",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "status",
+            "value",
+            "observedAtSeconds"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "unknown",
+                "unavailable",
+                "error"
+              ]
+            },
+            "value": {
+              "type": "null"
+            },
+            "reason": {
+              "$ref": "#/definitions/Text"
+            }
+          },
+          "required": [
+            "status",
+            "value",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "InventoryItem": {
+      "type": "object",
+      "properties": {
+        "itemId": {
+          "$ref": "#/definitions/DecimalId"
+        },
+        "slot": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "charges": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "itemId",
+        "slot",
+        "charges"
+      ],
+      "additionalProperties": false
+    },
+    "InventoryObservation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "known"
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/InventoryItem"
+              },
+              "minItems": 0
+            },
+            "observedAtSeconds": {
+              "type": "number",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "status",
+            "value",
+            "observedAtSeconds"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "unknown",
+                "unavailable",
+                "error"
+              ]
+            },
+            "value": {
+              "type": "null"
+            },
+            "reason": {
+              "$ref": "#/definitions/Text"
+            }
+          },
+          "required": [
+            "status",
+            "value",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "AbilityResource": {
+      "type": "object",
+      "properties": {
+        "resourceId": {
+          "$ref": "#/definitions/DecimalId"
+        },
+        "kind": {
+          "enum": [
+            "ability",
+            "item"
+          ]
+        },
+        "cooldownRemainingSeconds": {
+          "$ref": "#/definitions/NumberObservation"
+        },
+        "canUse": {
+          "$ref": "#/definitions/BooleanObservation"
+        }
+      },
+      "required": [
+        "resourceId",
+        "kind",
+        "cooldownRemainingSeconds",
+        "canUse"
+      ],
+      "additionalProperties": false
+    },
+    "ResourcesObservation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "known"
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/AbilityResource"
+              },
+              "minItems": 0
+            },
+            "observedAtSeconds": {
+              "type": "number",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "status",
+            "value",
+            "observedAtSeconds"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "unknown",
+                "unavailable",
+                "error"
+              ]
+            },
+            "value": {
+              "type": "null"
+            },
+            "reason": {
+              "$ref": "#/definitions/Text"
+            }
+          },
+          "required": [
+            "status",
+            "value",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Failure": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/definitions/Id"
+        },
+        "message": {
+          "$ref": "#/definitions/Text"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "additionalProperties": false
+    },
+    "RuleId": {
+      "enum": [
+        "D01",
+        "D02",
+        "L01",
+        "I01",
+        "F01"
+      ]
+    },
+    "Match": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "0.1.0"
+        },
+        "kind": {
+          "const": "match"
+        },
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "matchId": {
+          "$ref": "#/definitions/DecimalId"
+        },
+        "provenance": {
+          "$ref": "#/definitions/Provenance"
+        },
+        "startedAt": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "durationSeconds": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "patch": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "radiantWin": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "id",
+        "matchId",
+        "provenance",
+        "startedAt",
+        "durationSeconds",
+        "mode",
+        "patch",
+        "radiantWin"
+      ],
+      "additionalProperties": false
+    },
+    "Role": {
+      "type": "object",
+      "properties": {
+        "position": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "source": {
+          "enum": [
+            "manual",
+            "provider"
+          ]
+        },
+        "evidenceId": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "position",
+        "source",
+        "evidenceId"
+      ],
+      "additionalProperties": false
+    },
+    "Statistics": {
+      "type": "object",
+      "properties": {
+        "kills": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "deaths": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assists": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lastHits": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "denies": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gpm": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "xpm": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "heroDamage": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "towerDamage": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kills",
+        "deaths",
+        "assists",
+        "lastHits",
+        "denies",
+        "gpm",
+        "xpm",
+        "heroDamage",
+        "towerDamage"
+      ],
+      "additionalProperties": false
+    },
+    "Participant": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "0.1.0"
+        },
+        "kind": {
+          "const": "participant"
+        },
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "matchId": {
+          "$ref": "#/definitions/DecimalId"
+        },
+        "provenance": {
+          "$ref": "#/definitions/Provenance"
+        },
+        "playerSlot": {
+          "$ref": "#/definitions/PlayerSlot"
+        },
+        "team": {
+          "$ref": "#/definitions/Team"
+        },
+        "accountId": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/DecimalId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "steamId64": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/DecimalId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "heroId": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/DecimalId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "aspectId": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/DecimalId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "role": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Role"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "statistics": {
+          "$ref": "#/definitions/Statistics"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "id",
+        "matchId",
+        "provenance",
+        "playerSlot",
+        "team",
+        "accountId",
+        "steamId64",
+        "heroId",
+        "aspectId",
+        "role",
+        "statistics"
+      ],
+      "additionalProperties": false
+    },
+    "EventData": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "death"
+            },
+            "victimSlot": {
+              "$ref": "#/definitions/PlayerSlot"
+            },
+            "killerSlot": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/PlayerSlot"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "afterBuyback": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "victimSlot",
+            "killerSlot",
+            "afterBuyback"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "item"
+            },
+            "playerSlot": {
+              "$ref": "#/definitions/PlayerSlot"
+            },
+            "itemId": {
+              "$ref": "#/definitions/DecimalId"
+            },
+            "action": {
+              "enum": [
+                "purchased",
+                "assembled",
+                "received",
+                "used"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "playerSlot",
+            "itemId",
+            "action"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "objective"
+            },
+            "objectId": {
+              "$ref": "#/definitions/Id"
+            },
+            "objectType": {
+              "enum": [
+                "tower",
+                "barracks",
+                "ancient",
+                "roshan",
+                "other"
+              ]
+            },
+            "ownerTeam": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Team"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "beneficiaryTeam": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Team"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "objectId",
+            "objectType",
+            "ownerTeam",
+            "beneficiaryTeam"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "fight"
+            },
+            "window": {
+              "$ref": "#/definitions/Window"
+            },
+            "participantSlots": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/PlayerSlot"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "definition": {
+              "$ref": "#/definitions/Text"
+            }
+          },
+          "required": [
+            "type",
+            "window",
+            "participantSlots",
+            "definition"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "GameEvent": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "0.1.0"
+        },
+        "kind": {
+          "const": "event"
+        },
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "matchId": {
+          "$ref": "#/definitions/DecimalId"
+        },
+        "provenance": {
+          "$ref": "#/definitions/Provenance"
+        },
+        "gameTimeSeconds": {
+          "type": "number",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "tick": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "data": {
+          "$ref": "#/definitions/EventData"
+        },
+        "coverageIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Id"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "id",
+        "matchId",
+        "provenance",
+        "gameTimeSeconds",
+        "tick",
+        "data",
+        "coverageIds"
+      ],
+      "additionalProperties": false
+    },
+    "HeroState": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "0.1.0"
+        },
+        "kind": {
+          "const": "hero_state"
+        },
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "matchId": {
+          "$ref": "#/definitions/DecimalId"
+        },
+        "provenance": {
+          "$ref": "#/definitions/Provenance"
+        },
+        "playerSlot": {
+          "$ref": "#/definitions/PlayerSlot"
+        },
+        "gameTimeSeconds": {
+          "type": "number",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "tick": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "perspective": {
+          "$ref": "#/definitions/Perspective"
+        },
+        "visibility": {
+          "$ref": "#/definitions/VisibilityObservation"
+        },
+        "position": {
+          "$ref": "#/definitions/PositionObservation"
+        },
+        "hp": {
+          "$ref": "#/definitions/NumberObservation"
+        },
+        "mana": {
+          "$ref": "#/definitions/NumberObservation"
+        },
+        "alive": {
+          "$ref": "#/definitions/BooleanObservation"
+        },
+        "inventory": {
+          "$ref": "#/definitions/InventoryObservation"
+        },
+        "resources": {
+          "$ref": "#/definitions/ResourcesObservation"
+        },
+        "lastKnownPosition": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "position": {
+                  "$ref": "#/definitions/Position"
+                },
+                "observedAtSeconds": {
+                  "type": "number",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "position",
+                "observedAtSeconds"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "coverageIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Id"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "id",
+        "matchId",
+        "provenance",
+        "playerSlot",
+        "gameTimeSeconds",
+        "tick",
+        "perspective",
+        "visibility",
+        "position",
+        "hp",
+        "mana",
+        "alive",
+        "inventory",
+        "resources",
+        "lastKnownPosition",
+        "coverageIds"
+      ],
+      "additionalProperties": false
+    },
+    "Coverage": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "0.1.0"
+        },
+        "kind": {
+          "const": "coverage"
+        },
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "matchId": {
+          "$ref": "#/definitions/DecimalId"
+        },
+        "provenance": {
+          "$ref": "#/definitions/Provenance"
+        },
+        "datasetId": {
+          "$ref": "#/definitions/Id"
+        },
+        "field": {
+          "enum": [
+            "deaths",
+            "items",
+            "objectives",
+            "fights",
+            "positions",
+            "visibility",
+            "resources",
+            "statistics",
+            "time"
+          ]
+        },
+        "participantSlots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PlayerSlot"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "window": {
+          "$ref": "#/definitions/Window"
+        },
+        "status": {
+          "enum": [
+            "present",
+            "empty",
+            "missing",
+            "error",
+            "unknown"
+          ]
+        },
+        "resolutionSeconds": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidenceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Id"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "id",
+        "matchId",
+        "provenance",
+        "datasetId",
+        "field",
+        "participantSlots",
+        "window",
+        "status",
+        "resolutionSeconds",
+        "reason",
+        "evidenceIds"
+      ],
+      "additionalProperties": false
+    },
+    "Job": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "0.1.0"
+        },
+        "kind": {
+          "const": "job"
+        },
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "matchId": {
+          "$ref": "#/definitions/DecimalId"
+        },
+        "provenance": {
+          "$ref": "#/definitions/Provenance"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "resolving",
+            "downloading",
+            "parsing",
+            "validating",
+            "analysing",
+            "ready",
+            "unavailable",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "dataLevel": {
+          "enum": [
+            "none",
+            "summary",
+            "events",
+            "replay_context"
+          ]
+        },
+        "reportStatus": {
+          "enum": [
+            "not_requested",
+            "pending",
+            "ready",
+            "failed"
+          ]
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Text"
+          },
+          "minItems": 0
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Failure"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "id",
+        "matchId",
+        "provenance",
+        "status",
+        "dataLevel",
+        "reportStatus",
+        "limitations",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "RuleSignal": {
+      "type": "object",
+      "properties": {
+        "ruleId": {
+          "$ref": "#/definitions/RuleId"
+        },
+        "ruleVersion": {
+          "$ref": "#/definitions/Text"
+        },
+        "configSha256": {
+          "$ref": "#/definitions/Sha256"
+        },
+        "evidenceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Id"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "ruleId",
+        "ruleVersion",
+        "configSha256",
+        "evidenceIds"
+      ],
+      "additionalProperties": false
+    },
+    "Review": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "status": {
+          "enum": [
+            "confirmed_error",
+            "justified",
+            "uncertain"
+          ]
+        },
+        "explanation": {
+          "$ref": "#/definitions/Text"
+        },
+        "alternative": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "author": {
+          "$ref": "#/definitions/Text"
+        },
+        "reviewedAt": {
+          "$ref": "#/definitions/Timestamp"
+        },
+        "material": {
+          "enum": [
+            "map",
+            "dota_client"
+          ]
+        },
+        "perspective": {
+          "$ref": "#/definitions/Perspective"
+        }
+      },
+      "required": [
+        "version",
+        "status",
+        "explanation",
+        "alternative",
+        "author",
+        "reviewedAt",
+        "material",
+        "perspective"
+      ],
+      "additionalProperties": false
+    },
+    "Episode": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "0.1.0"
+        },
+        "kind": {
+          "const": "episode"
+        },
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "matchId": {
+          "$ref": "#/definitions/DecimalId"
+        },
+        "provenance": {
+          "$ref": "#/definitions/Provenance"
+        },
+        "datasetId": {
+          "$ref": "#/definitions/Id"
+        },
+        "playerSlot": {
+          "$ref": "#/definitions/PlayerSlot"
+        },
+        "window": {
+          "$ref": "#/definitions/Window"
+        },
+        "decisionTimeSeconds": {
+          "type": "number",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "signals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RuleSignal"
+          },
+          "minItems": 1
+        },
+        "evidenceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Id"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "review": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Review"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "id",
+        "matchId",
+        "provenance",
+        "datasetId",
+        "playerSlot",
+        "window",
+        "decisionTimeSeconds",
+        "signals",
+        "evidenceIds",
+        "review"
+      ],
+      "additionalProperties": false
+    },
+    "Claim": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "fact",
+            "hypothesis"
+          ]
+        },
+        "text": {
+          "$ref": "#/definitions/Text"
+        },
+        "evidenceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Id"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "kind",
+        "text",
+        "evidenceIds"
+      ],
+      "additionalProperties": false
+    },
+    "AnalysisVersions": {
+      "type": "object",
+      "properties": {
+        "parser": {
+          "$ref": "#/definitions/Text"
+        },
+        "normalization": {
+          "$ref": "#/definitions/Text"
+        },
+        "rules": {
+          "$ref": "#/definitions/Text"
+        },
+        "skillSha256": {
+          "$ref": "#/definitions/Sha256"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "promptSha256": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "parser",
+        "normalization",
+        "rules",
+        "skillSha256",
+        "model",
+        "promptSha256"
+      ],
+      "additionalProperties": false
+    },
+    "Report": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "0.1.0"
+        },
+        "kind": {
+          "const": "report"
+        },
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "matchId": {
+          "$ref": "#/definitions/DecimalId"
+        },
+        "provenance": {
+          "$ref": "#/definitions/Provenance"
+        },
+        "datasetId": {
+          "$ref": "#/definitions/Id"
+        },
+        "playerSlot": {
+          "$ref": "#/definitions/PlayerSlot"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/Timestamp"
+        },
+        "claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Claim"
+          },
+          "minItems": 0
+        },
+        "episodeIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Id"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "reviewRefs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "episodeId": {
+                "$ref": "#/definitions/Id"
+              },
+              "reviewVersion": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "episodeId",
+              "reviewVersion"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "skippedRules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "ruleId": {
+                "$ref": "#/definitions/RuleId"
+              },
+              "reason": {
+                "$ref": "#/definitions/Text"
+              }
+            },
+            "required": [
+              "ruleId",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "action": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "confirmed_practice",
+                    "experiment",
+                    "review_episode"
+                  ]
+                },
+                "text": {
+                  "$ref": "#/definitions/Text"
+                },
+                "evidenceIds": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Id"
+                  },
+                  "minItems": 1,
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "kind",
+                "text",
+                "evidenceIds"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "versions": {
+          "$ref": "#/definitions/AnalysisVersions"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "id",
+        "matchId",
+        "provenance",
+        "datasetId",
+        "playerSlot",
+        "createdAt",
+        "claims",
+        "episodeIds",
+        "reviewRefs",
+        "skippedRules",
+        "action",
+        "versions"
+      ],
+      "additionalProperties": false
+    },
+    "ContractRecord": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/Match"
+        },
+        {
+          "$ref": "#/definitions/Participant"
+        },
+        {
+          "$ref": "#/definitions/GameEvent"
+        },
+        {
+          "$ref": "#/definitions/HeroState"
+        },
+        {
+          "$ref": "#/definitions/Coverage"
+        },
+        {
+          "$ref": "#/definitions/Job"
+        },
+        {
+          "$ref": "#/definitions/Episode"
+        },
+        {
+          "$ref": "#/definitions/Report"
+        }
+      ]
+    },
+    "RecordMessage": {
+      "type": "object",
+      "properties": {
+        "protocolVersion": {
+          "const": "1.0.0"
+        },
+        "schemaVersion": {
+          "const": "0.1.0"
+        },
+        "type": {
+          "const": "record"
+        },
+        "requestId": {
+          "$ref": "#/definitions/Id"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "record": {
+          "$ref": "#/definitions/ContractRecord"
+        }
+      },
+      "required": [
+        "protocolVersion",
+        "schemaVersion",
+        "type",
+        "requestId",
+        "sequence",
+        "record"
+      ],
+      "additionalProperties": false
+    },
+    "CompleteMessage": {
+      "type": "object",
+      "properties": {
+        "protocolVersion": {
+          "const": "1.0.0"
+        },
+        "schemaVersion": {
+          "const": "0.1.0"
+        },
+        "type": {
+          "const": "complete"
+        },
+        "requestId": {
+          "$ref": "#/definitions/Id"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "protocolVersion",
+        "schemaVersion",
+        "type",
+        "requestId",
+        "sequence",
+        "recordCount"
+      ],
+      "additionalProperties": false
+    },
+    "ErrorMessage": {
+      "type": "object",
+      "properties": {
+        "protocolVersion": {
+          "const": "1.0.0"
+        },
+        "schemaVersion": {
+          "const": "0.1.0"
+        },
+        "type": {
+          "const": "error"
+        },
+        "requestId": {
+          "$ref": "#/definitions/Id"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "code": {
+          "enum": [
+            "not_implemented",
+            "invalid_replay",
+            "parse_failed",
+            "cancelled"
+          ]
+        },
+        "message": {
+          "$ref": "#/definitions/Text"
+        }
+      },
+      "required": [
+        "protocolVersion",
+        "schemaVersion",
+        "type",
+        "requestId",
+        "sequence",
+        "code",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "ProtocolMessage": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/RecordMessage"
+        },
+        {
+          "$ref": "#/definitions/CompleteMessage"
+        },
+        {
+          "$ref": "#/definitions/ErrorMessage"
+        }
+      ]
+    },
+    "ProtocolRequest": {
+      "type": "object",
+      "properties": {
+        "protocolVersion": {
+          "const": "1.0.0"
+        },
+        "schemaVersion": {
+          "const": "0.1.0"
+        },
+        "type": {
+          "const": "parse"
+        },
+        "requestId": {
+          "$ref": "#/definitions/Id"
+        },
+        "replayPath": {
+          "$ref": "#/definitions/Text"
+        },
+        "expectedMatchId": {
+          "$ref": "#/definitions/DecimalId"
+        }
+      },
+      "required": [
+        "protocolVersion",
+        "schemaVersion",
+        "type",
+        "requestId",
+        "replayPath",
+        "expectedMatchId"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
