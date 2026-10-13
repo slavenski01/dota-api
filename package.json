@@ -8,9 +8,12 @@
     "node": "26.3.0",
     "npm": "11.16.0"
   },
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "build:packages": "npm run build --workspace=@dota/contracts && npm run build --workspace=@dota/analysis",
+    "build:packages": "npm run build --workspace=@dota/contracts && npm run build --workspace=@dota/analysis && npm run build --workspace=@dota/persistence",
     "build:ts": "npm run build:packages && npm run build --workspace=@dota/worker && npm run build --workspace=@dota/web",
     "build:parser": "./services/replay-parser/gradlew --project-dir services/replay-parser --no-daemon build installDist",
     "build": "npm run build:ts && npm run build:parser",
@@ -21,10 +24,13 @@
     "start:worker": "npm run start --workspace=@dota/worker --",
     "start:parser": "./services/replay-parser/build/install/replay-parser/bin/replay-parser",
     "smoke": "node --test scripts/smoke.test.mjs",
-    "test:contracts": "node --test scripts/contracts.test.mjs"
+    "test:contracts": "node --test scripts/contracts.test.mjs",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
+    "test:persistence": "node scripts/test-postgres.mjs scripts/persistence.test.mjs"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "embedded-postgres": "18.4.0-beta.17"
   }
 }
