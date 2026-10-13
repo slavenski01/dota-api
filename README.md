@@ -189,3 +189,7 @@ npm run smoke
 ```
 
 В macOS/Linux тесты запускаются от обычного пользователя; `embedded-postgres` должен выполнить свой postinstall при `npm ci`. PostgreSQL слушает только loopback, временные пароли не выводятся. Команды `start:web`, `dev:web`, `start:worker`, `dev:worker`, `db:migrate` читают `.env` корня.
+
+## E03: профиль и история
+
+`/profile` — ввод account ID/SteamID64 и сохранение выбранного профиля. [Контракт и проверки](docs/profiles-and-history.md). Для проверки профилей: `npm run test:profiles`.

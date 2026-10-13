@@ -20,6 +20,11 @@ export function json(value: unknown, status = 200): Response {
   return Response.json(value, { status, headers: { "Cache-Control": "no-store" } });
 }
 export function errorResponse(error: unknown): Response {
+  if (error instanceof persistence.SourceError) {
+    const response = json({ error: error.code, retryAfter: error.retryAfter }, error.status);
+    if (error.retryAfter !== null) response.headers.set("Retry-After", String(error.retryAfter));
+    return response;
+  }
   const code = error instanceof JobError ? error.code : "service_unavailable";
   const status = code === "job_not_found" ? 404 : ["invalid_request", "invalid_json", "invalid_job_id", "artifact_match_mismatch", "request_too_large"].includes(code) ? 400 : code === "origin_not_allowed" ? 403 : 503;
   return json({ error: code }, status);

@@ -11,6 +11,7 @@ export default function HomePage() {
         <p className="label">Состояние проекта</p>
         <h2 id="status-title">Сервис в разработке</h2>
         <p>Загрузка матчей и просмотр реплеев появятся на следующих этапах.</p>
+        <p><a href="/profile">Выбрать профиль игрока</a></p>
         <p><a href="/jobs">Открыть состояние обработки</a></p>
       </section>
       <footer>Персональная аналитика Dota 2 · локальный запуск</footer>

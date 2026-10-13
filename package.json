@@ -30,7 +30,8 @@
     "test:storage": "node scripts/test-postgres.mjs scripts/storage.test.mjs",
     "test:jobs": "node scripts/test-postgres.mjs scripts/jobs.test.mjs",
     "test:workflow": "node scripts/test-postgres.mjs scripts/workflow.test.mjs",
-    "test:postgres-harness": "node --test scripts/postgres-harness.test.mjs"
+    "test:postgres-harness": "node --test scripts/postgres-harness.test.mjs",
+    "test:profiles": "node scripts/test-postgres.mjs scripts/profiles.test.mjs"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

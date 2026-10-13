@@ -94,3 +94,5 @@ export async function saveDataset(pool: Pool, dataset: DatasetInput, input: unkn
     await insertRecords(client, dataset.id, records);
   });
 }
+export { SourceError, normalizePlayerId, openDota, parseProfile, selectProfile, selectedProfile } from "./profiles.js";
+export type { PlayerProfile, SourceFetch } from "./profiles.js";
