@@ -8,10 +8,11 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   try {
     const { matchId, accountId } = replayParams(request, (await context.params).id);
     const { pool } = await infrastructure();
-    const summary = (await pool.query("SELECT summary FROM dota.player_matches WHERE match_id=$1 AND account_id=$2", [matchId, accountId])).rows[0]?.summary ?? null;
+    const history = (await pool.query("SELECT summary,fetched_at FROM dota.player_matches WHERE match_id=$1 AND account_id=$2", [matchId, accountId])).rows[0];
+    const summary = history?.summary ?? null;
     const replay = (await pool.query("SELECT id,size_bytes FROM dota.artifacts WHERE match_id=$1 AND media_type=$2 AND source->>'validation'='replay-v1' AND source->'accountIds' ? $3 ORDER BY created_at DESC LIMIT 1", [matchId, persistence.REPLAY_MEDIA_TYPE, accountId])).rows[0];
     const jobId = (await pool.query("SELECT id FROM dota.workflow_jobs WHERE match_id=$1 AND account_id=$2 ORDER BY created_at DESC LIMIT 1", [matchId, accountId])).rows[0]?.id ?? null;
-    return json({ matchId, accountId, summary, jobId, replay: replay ? { sizeBytes: Number(replay.size_bytes) } : null });
+    return json({ matchId, accountId, summary, fetchedAt: history?.fetched_at ?? null, jobId, replay: replay ? { sizeBytes: Number(replay.size_bytes) } : null });
   } catch (error) { return errorResponse(error); }
 }
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {

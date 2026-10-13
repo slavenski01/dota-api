@@ -4,7 +4,8 @@ import Link from "next/link";
 import type { MatchSummary } from "@dota/persistence";
 import { api } from "../../../lib/source-errors";
 import MatchAnalysis from "./analysis";
-type Detail = { summary: MatchSummary | null; jobId: string | null; replay: { sizeBytes: number } | null };
+import Overview from "./overview";
+type Detail = { summary: MatchSummary | null; fetchedAt: string | null; jobId: string | null; replay: { sizeBytes: number } | null };
 type State = { datasetId: string | null; analysisId: string | null; artifactId: string | null; analysisOptions: { keyItemId: string; gamePlan: string } | null; job: { status: string; limitations: string[]; error: { code: string } | null }; queueState: string | null; progress: { phase: string; bytes: number; totalBytes: number | null } | null };
 const terminal = new Set(["ready", "unavailable", "failed", "cancelled"]);
 const states: Record<string,string> = { queued:"В очереди",resolving:"Поиск реплея",downloading:"Подготовка реплея",parsing:"Проверка завершена",validating:"Проверка данных",analysing:"Анализ",ready:"Готово",unavailable:"Обработка недоступна",failed:"Ошибка обработки",cancelled:"Отменено" };
@@ -51,7 +52,7 @@ export default function MatchReplay({ matchId, items }: { matchId: string; items
   return <main><Link href="/profile">← К истории матчей</Link><p className="eyebrow">РЕПЛЕЙ МАТЧА</p><h1>Матч {matchId}</h1>
     {!accountId?<p role="alert">Откройте матч из истории выбранного профиля.</p>:<>
       <p className="muted">Игрок {accountId}. Состояние сохраняется: можно закрыть страницу и вернуться позже.</p>
-      {detail?.summary&&<section><h2>Статистика матча</h2><p>K / D / A: {detail.summary.kills??"—"} / {detail.summary.deaths??"—"} / {detail.summary.assists??"—"} · {detail.summary.won===null?"Результат неизвестен":detail.summary.won?"Победа":"Поражение"}</p></section>}
+      <Overview datasetId={state?.datasetId??null} accountId={accountId} summary={detail?.summary??null} fetchedAt={detail?.fetchedAt??null}/>
       {error&&<p className="notice error" role="alert">{error}</p>}
       <section className="analysis-options"><h2>План этой игры</h2><p>Необязательно. Выберите ключевой предмет и задачу героя для хронологии после покупки. Параметры применяются при нажатии «Загрузить и разобрать» или «Повторить обработку».</p>
         <label>Ключевой предмет <select value={keyItemId} disabled={busy||active} onChange={e=>setKeyItemId(e.target.value)}><option value="">Не выбран</option>{items.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>

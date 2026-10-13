@@ -45,7 +45,8 @@
     "test:death-rules": "node --test scripts/death-rules.test.mjs",
     "test:item-fight-rules": "node --test scripts/item-fight-rules.test.mjs",
     "test:episodes": "node --test scripts/episodes.test.mjs",
-    "test:analysis-integration": "node scripts/test-postgres.mjs scripts/analysis-integration.test.mjs"
+    "test:analysis-integration": "node scripts/test-postgres.mjs scripts/analysis-integration.test.mjs",
+    "test:match-view": "node scripts/test-postgres.mjs scripts/match-view.test.mjs"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
