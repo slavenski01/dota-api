@@ -5,6 +5,8 @@ import {createReadStream} from 'node:fs';
 import {resolve,dirname} from 'node:path';
 import {openDatabase,migrate,LocalStorage,transaction,registerArtifact,REPLAY_MEDIA_TYPE,readStateWindow,stateAt} from '@dota/persistence';
 import {normalizationHandler,decodeDataset} from '../packages/jobs/dist/normalization.js';
+import {datasetValidationHandler,datasetValidation} from '../packages/jobs/dist/dataset-validation.js';
+import {windowUsability} from '@dota/analysis';
 import {defaultVersions} from '@dota/jobs';
 test('real replay normalization is committed atomically with provenance and distinct event semantics',async t=>{
  const pool=openDatabase(process.env.TEST_DATABASE_URL), root=await mkdtemp('/tmp/dota-normalized-');
@@ -28,6 +30,12 @@ test('real replay normalization is committed atomically with provenance and dist
   assert.ok(rows.filter(r=>r.kind==='coverage').every(r=>r.datasetId===result.datasetId));
   assert.ok(items.every(r=>['purchased','used'].includes(r.data.action)));
   assert.equal((await pool.query('SELECT * FROM dota.parser_runs')).rowCount,1);
+  const checked=await datasetValidationHandler(pool)({row:{...row,dataset_id:result.datasetId},signal:new AbortController().signal,steps:{}});
+  await transaction(pool,checked.commit);
+  const report=await datasetValidation(pool,result.datasetId);assert.ok(report.complete,JSON.stringify(report.issues));assert.deepEqual(report.issues,[]);
+  assert.equal(windowUsability(report,'deaths',[0],{startSeconds:0,endSeconds:10}).usable,true);
+  assert.equal(windowUsability(report,'resources',[0],{startSeconds:0,endSeconds:10}).usable,false);
+  await assert.rejects(pool.query('UPDATE dota.dataset_checks SET version=version'));
   const states=rows.filter(r=>r.kind==='hero_state');assert.ok(states.length>100);
   const first=states.sort((a,b)=>a.gameTimeSeconds-b.gameTimeSeconds)[0];assert.ok(first.gameTimeSeconds<0);
   assert.equal(await stateAt(pool,result.datasetId,first.playerSlot,first.gameTimeSeconds-1),null);

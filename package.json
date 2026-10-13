@@ -38,7 +38,8 @@
     "test:replay-source": "node scripts/test-postgres.mjs scripts/replay-source.test.mjs",
     "test:replay-import": "node scripts/test-postgres.mjs scripts/replay-import.test.mjs",
     "test:replay-web": "node scripts/test-postgres.mjs scripts/replay-web.test.mjs",
-    "test:normalization": "node scripts/test-postgres.mjs scripts/normalization.test.mjs"
+    "test:normalization": "node scripts/test-postgres.mjs scripts/normalization.test.mjs",
+    "test:coverage": "node --test scripts/coverage.test.mjs"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

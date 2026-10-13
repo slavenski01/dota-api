@@ -68,7 +68,7 @@ export function normalizationHandler(pool: Pool, storage: Storage): StageHandler
       return { datasetId, dataLevel: "events", limitations: ["Получение предметов и полнота журналов предметов/объектов пока не подтверждены."],
         commit: async client => {
           await client.query("INSERT INTO dota.parser_runs(id,match_id,artifact_id,parser_version,parameters,outcome,diagnostics) VALUES ($1,$2,$3,$4,$5,'complete',$6)",
-            [parserRunId, row.match_id, artifactId, row.versions.parser, { protocol: "1.0.0" }, { recordCount: records.length }]);
+            [parserRunId, row.match_id, artifactId, row.versions.parser, { protocol: "1.0.0" }, { recordCount: records.length, inputVerified: true, transportComplete: true }]);
           await saveDatasetInTransaction(client, { id: datasetId, matchId: row.match_id, parserRunId,
             normalizationVersion: row.versions.normalization, inputSha256: artifact.sha256, versions: { ...row.versions } }, indexed);
           await saveSegments(client);

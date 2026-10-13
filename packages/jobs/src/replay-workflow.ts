@@ -1,3 +1,4 @@
+import { datasetValidationHandler } from "./dataset-validation.js";
 import { normalizationHandler } from "./normalization.js";
 import { artifactById, registerArtifact, REPLAY_MEDIA_TYPE, resolveReplay, verifiedReplay, SourceError, type Pool, type Storage, type SourceFetch } from "@dota/persistence";
 import { downloadReplay, importReplay, type ImportedReplay, type ReplayProgress } from "./replay.js";
@@ -46,7 +47,7 @@ export function replayHandlers(pool: Pool, storage: Storage, fetcher?: SourceFet
         commit: client => registerArtifact(client, { id: imported.artifactId, matchId: row.match_id, file: imported.file, mediaType: REPLAY_MEDIA_TYPE, source: imported.source }) };
     },
     parsing: normalizationHandler(pool, storage),
-    validating: async () => ({ unavailable: "analysis_not_connected" }),
+    validating: datasetValidationHandler(pool),
     analysing: async () => ({ unavailable: "analysis_not_connected" }),
   };
 }
