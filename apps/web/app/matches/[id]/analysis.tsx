@@ -15,7 +15,7 @@ export default function MatchAnalysis({ datasetId, analysisId, accountId, items 
   if (error) return <p role="alert">{error}</p>;
   if (!run) return <p role="status">Загрузка результатов анализа…</p>;
   const skipped = [...new Set(run.results.filter(r => r.status === "skipped").map(r => r.ruleId))];
-  const episodeLink = (id: string) => `/api/datasets/${encodeURIComponent(datasetId)}/episodes/${id}?accountId=${encodeURIComponent(accountId)}`;
+  const episodeLink = (id: string) => `/matches/${encodeURIComponent(run.matchId)}/episodes/${encodeURIComponent(id)}?datasetId=${encodeURIComponent(datasetId)}&accountId=${encodeURIComponent(accountId)}`;
   const rate = run.metrics.deathsPerTenMinutes?.value, participation = run.metrics.killParticipation?.value;
   const itemNames = new Map(items.map(item => [item.id, item.name]));
   return <section className="analysis-results"><h2>Эпизоды для проверки</h2>
@@ -28,7 +28,8 @@ export default function MatchAnalysis({ datasetId, analysisId, accountId, items 
       <h3>{time(e.episode.decisionTimeSeconds)} · {e.episode.signals.map(s => titles[s.ruleId]).join(" / ")}</h3>
       <p>Просмотр: {time(e.episode.window.startSeconds)}–{time(e.episode.window.endSeconds)}{e.results.some(r => r.viewClipped) ? " (ограничен доступной записью)" : ""}</p>
       {[...new Set(e.results.flatMap(r => r.facts))].map(f => <p key={f}>{f}</p>)}
-      <details><summary>Основания и ограничения</summary>{[...new Set(e.results.flatMap(r => r.limitations))].map(l => <p key={l}>{l}</p>)}<a href={episodeLink(e.episode.id)}>Данные эпизода и исходные события</a></details>
+      <a href={episodeLink(e.episode.id)}>Открыть эпизод</a>
+      <details><summary>Основания и ограничения</summary>{[...new Set(e.results.flatMap(r => r.limitations))].map(l => <p key={l}>{l}</p>)}</details>
     </article>)}
     {run.episodes.length > 3 && <details><summary>Остальные эпизоды ({run.episodes.length - 3})</summary><ul>{run.episodes.filter(e => !run.primaryEpisodeIds.includes(e.episode.id)).map(e => <li key={e.episode.id}><a href={episodeLink(e.episode.id)}>{time(e.episode.decisionTimeSeconds)} · {e.episode.signals.map(s => titles[s.ruleId]).join(" / ")}</a></li>)}</ul></details>}
     {skipped.length > 0 && <details><summary>Что не удалось проверить</summary><ul>{skipped.map(id => <li key={id}>{titles[id]}: {id === "I01" && !run.options ? "не выбраны ключевой предмет и план игры" : id === "F01" ? "не подтверждены границы боя или полные потери команд" : "не хватает подтверждённых событий, сторон или полного временного окна"}.</li>)}</ul></details>}

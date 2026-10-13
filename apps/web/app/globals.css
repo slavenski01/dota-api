@@ -63,3 +63,11 @@ td:nth-child(6) { min-width: 220px; }
 .metric-chart text { fill: currentColor; font-size: 13px; }
 .chart-table { overflow: auto; max-height: 320px; }
 .match-overview { line-height: 1.6; }
+.episode-page { max-width: 1200px; line-height: 1.6; }
+.episode-page h1 { font-size: clamp(28px, 4vw, 46px); }
+.episode-context { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.map-unavailable { background: repeating-linear-gradient(45deg,#18221e,#18221e 15px,#1d2923 15px,#1d2923 30px); min-height: 320px; align-content: center; }
+#episode-time { display: block; width: 100%; padding: 12px 0; accent-color: #b4d78c; }
+.event-list { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; max-height: 300px; overflow: auto; }
+.event-list button { font-size: 13px; }
+@media(max-width:760px) { .episode-context { grid-template-columns: 1fr; } }

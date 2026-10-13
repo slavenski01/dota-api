@@ -77,3 +77,5 @@ export { datasetValidation } from "./dataset-validation.js";
 export { analysisHandler, readAnalysis, readEpisode } from "./analysis.js";
 export { readMatchOverview } from "./match-view.js";
 export type { MatchOverview } from "./match-view.js";
+export { readEpisodeFrame } from "./episode-view.js";
+export type { EpisodeFrame, ViewerState } from "./episode-view.js";
