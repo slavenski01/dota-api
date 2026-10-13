@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { createZstdDecompress } from "node:zlib";
+import { createZstdDecompress, constants as zstdConstants } from "node:zlib";
 import { spawn } from "node:child_process";
 import { encodeRequest, readMessages } from "@dota/contracts";
 import { resolveReplay, replayRequest, replayMatchId, type Pool, type Storage, type StoredFile, type SourceFetch, SourceError } from "@dota/persistence";
@@ -100,7 +100,7 @@ export async function importReplay(storage: Storage, input: Readable, options: I
     const counter = limiter(limits.decodedBytes, async bytes => { decoded = bytes; await progress("decompressing", bytes, null); });
     counter.on("data", chunk => hash.update(chunk));
     if (compression === "bzip2") await decompressBzip(archive, replay, counter, signal);
-    else if (compression === "zstd") await pipeline(createReadStream(archive), createZstdDecompress(), counter, createWriteStream(replay, { flags: "wx", mode: 0o600 }), { signal });
+    else if (compression === "zstd") await pipeline(createReadStream(archive), createZstdDecompress({ params: { [zstdConstants.ZSTD_d_windowLogMax]: 27 } }), counter, createWriteStream(replay, { flags: "wx", mode: 0o600 }), { signal });
     else await pipeline(createReadStream(archive), counter, createWriteStream(replay, { flags: "wx", mode: 0o600 }), { signal });
     const replayHandle = await open(replay, "r"); const header = Buffer.alloc(8);
     try { await replayHandle.read(header, 0, 8, 0); } finally { await replayHandle.close(); }

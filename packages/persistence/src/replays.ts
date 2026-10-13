@@ -52,8 +52,8 @@ export async function resolveReplay(pool: Pool, storage: Storage, matchId: strin
   const stored = await verifiedReplay(pool, storage, matchId, options.accountId);
   signal.throwIfAborted();
   if (stored) return { status: "stored", ...stored };
-  if (!options.force && !options.accountId) {
-    const saved = (await pool.query("SELECT * FROM dota.replay_sources WHERE match_id=$1 AND status='candidate' AND checked_at>now()-interval '5 minutes'", [matchId])).rows[0];
+  if (!options.force) {
+    const saved = (await pool.query("SELECT * FROM dota.replay_sources WHERE match_id=$1 AND status='candidate' AND checked_at>now()-interval '5 minutes' AND ($2::text IS NULL OR checked_accounts ? $2)", [matchId, options.accountId ?? null])).rows[0];
     if (saved) return { status: "candidate", url: replayUrl(saved.url, matchId), checkedAt: saved.checked_at.toISOString() };
   }
   const fetcher: SourceFetch = (input, init) => (options.fetcher ?? fetch)(input, { ...init, signal });
@@ -75,7 +75,7 @@ export async function resolveReplay(pool: Pool, storage: Storage, matchId: strin
   }
   const checkedAt = new Date().toISOString();
   await pool.query("INSERT INTO dota.matches(match_id) VALUES ($1) ON CONFLICT DO NOTHING", [matchId]);
-  await pool.query(`INSERT INTO dota.replay_sources VALUES ($1,$2,'opendota',$3,$4)
-    ON CONFLICT(match_id) DO UPDATE SET checked_at=excluded.checked_at,status=excluded.status,url=excluded.url`, [matchId, checkedAt, status, url]);
+  await pool.query(`INSERT INTO dota.replay_sources(match_id,checked_at,source,status,url,checked_accounts) VALUES ($1,$2,'opendota',$3,$4,$5)
+    ON CONFLICT(match_id) DO UPDATE SET checked_at=excluded.checked_at,status=excluded.status,url=excluded.url,checked_accounts=excluded.checked_accounts`, [matchId, checkedAt, status, url, JSON.stringify(options.accountId ? [options.accountId] : [])]);
   return status === "candidate" ? { status, url: url!, checkedAt } : { status, checkedAt };
 }

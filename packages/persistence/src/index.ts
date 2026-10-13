@@ -4,7 +4,7 @@ import { Pool, type PoolClient } from "pg";
 import { validateRecord, type ContractRecord } from "@dota/contracts";
 export { Pool } from "pg";
 export type { PoolClient } from "pg";
-export { LocalStorage, STORAGE_LIMITS, registerArtifact, artifactById, storeStateSegments, readStateWindow } from "./storage.js";
+export { LocalStorage, configuredStorageRoot, STORAGE_LIMITS, registerArtifact, artifactById, storeStateSegments, readStateWindow } from "./storage.js";
 export type { Storage, StoredFile, Perspective } from "./storage.js";
 
 export function openDatabase(connectionString = process.env.DATABASE_URL): Pool {

@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { constants, createWriteStream, mkdirSync, lstatSync, realpathSync } from "node:fs";
 import { mkdir, realpath, lstat, open, link, unlink, readdir } from "node:fs/promises";
 import { resolve, join, dirname } from "node:path";
@@ -12,6 +13,7 @@ import { transaction, type Pool, type PoolClient } from "./index.js";
 const compress = promisify(gzip);
 const decompress = promisify(gunzip);
 export const STORAGE_LIMITS = { blobBytes: 1024 ** 3, segmentBytes: 4 * 1024 ** 2, decodedSegmentBytes: 16 * 1024 ** 2, windowSeconds: 120, temporaryAgeMs: 24 * 3600_000 } as const;
+export function configuredStorageRoot(): string { return resolve(fileURLToPath(new URL("../../../", import.meta.url)), process.env.STORAGE_ROOT ?? "data/storage"); }
 export interface StoredFile { key: string; sha256: string; sizeBytes: number }
 export interface Storage {
   put(source: Readable, options?: { maxBytes?: number; signal?: AbortSignal }): Promise<StoredFile>;

@@ -38,5 +38,7 @@ test('list reads are side effect free and never promise remote replay availabili
 });
 test('stored artifact and processing/report state are separate from remote availability',async()=>{
  await pool.query("INSERT INTO dota.artifacts(id,match_id,storage_key,sha256,size_bytes,media_type,source) VALUES ('file','12',$1,$2,0,'application/gzip','{}')",['aa/'+'a'.repeat(64),'a'.repeat(64)]);
- const row=(await listMatches(pool,filters('from=2024-01-02'))).items[0];assert.equal(row.storedArtifact,true);assert.equal(row.replayAvailability,'unchecked');assert.equal(row.reportStatus,'not_requested');
+ const row=(await listMatches(pool,filters('from=2024-01-02'))).items[0];assert.equal(row.storedArtifact,false);assert.equal(row.replayAvailability,'unchecked');assert.equal(row.reportStatus,'not_requested');
+ await pool.query("INSERT INTO dota.artifacts(id,match_id,storage_key,sha256,size_bytes,media_type,source) VALUES ('replay','12',$1,$2,0,'application/x-dota-replay',$3)",['bb/'+'b'.repeat(64),'b'.repeat(64),{validation:'replay-v1',accountIds:['123']}]);
+ assert.equal((await listMatches(pool,filters('from=2024-01-02'))).items[0].storedArtifact,true);
 });

@@ -130,7 +130,7 @@ test("HTTP API returns a durable ID, supports polling/cancel and rejects invalid
   const launch=await(await post({matchId:"402"})).json();
   worker=spawn(process.execPath,["apps/worker/dist/index.js"],{env,stdio:"ignore"});
   const unavailable=await until(async()=>{const result=await(await fetch(`${base}/api/jobs/${launch.id}`)).json();return result.job?.status==="unavailable"&&result;});
-  assert.equal(unavailable.job.dataLevel,"none");assert.equal(unavailable.job.error.code,"source_adapter_not_connected");
+  assert.equal(unavailable.job.dataLevel,"none");assert.equal(unavailable.job.error.code,"player_required");
  }finally{
   for(const child of [worker,web].filter(Boolean)){if(child.exitCode===null){const exit=once(child,"exit");child.kill("SIGTERM");const timer=setTimeout(()=>child.kill("SIGKILL"),5000);await exit;clearTimeout(timer);}}
  }

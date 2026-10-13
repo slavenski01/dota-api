@@ -1,6 +1,7 @@
 "use client";
 import { useCallback,useEffect,useRef,useState,type FormEvent } from "react";
 import type { MatchListItem } from "@dota/persistence";
+import { useRouter } from "next/navigation";
 import heroData from "../../lib/heroes.json";
 import { api,sourceError } from "../../lib/source-errors";
 const heroes:Record<string,string>=heroData;
@@ -13,6 +14,13 @@ const states:Record<string,string>={not_requested:"Не запрошена",queu
 const levels:Record<string,string>={none:"Нет данных",summary:"Сводка",events:"События",replay_context:"Контекст реплея"};
 function displayDate(value:string){return new Intl.DateTimeFormat("ru-RU",{timeZone:"UTC",dateStyle:"medium",timeStyle:"short"}).format(new Date(value));}
 export default function MatchHistory({accountId}:{accountId:string}) {
+  const router=useRouter();const [starting,setStarting]=useState<string|null>(null);const launching=useRef(false);
+  async function startMatch(matchId:string){
+    if(launching.current)return;launching.current=true;setStarting(matchId);setError("");
+    try{await api("/api/jobs",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({matchId,accountId})});router.push(`/matches/${matchId}?accountId=${accountId}`);}
+    catch(e){setError(e instanceof Error?e.message:"Не удалось запустить обработку.");}
+    finally{launching.current=false;setStarting(null);}
+  }
   const [filters,setFilters]=useState<Filters>(blank);const [ready,setReady]=useState(false);
   const [items,setItems]=useState<MatchListItem[]>([]);const [cursor,setCursor]=useState<string|null>(null);
   const [history,setHistory]=useState<History|null>(null);const [loading,setLoading]=useState(false);const [syncing,setSyncing]=useState(false);
@@ -74,8 +82,8 @@ export default function MatchHistory({accountId}:{accountId:string}) {
     {items.length>0&&<div className="table-scroll"><table><caption>Матчи выбранного игрока · время UTC</caption><thead><tr><th>Дата / ID</th><th>Герой</th><th>Результат</th><th>Время</th><th>K / D / A</th><th>Данные и обработка</th><th>Действие</th></tr></thead><tbody>{items.map(item=><tr key={item.matchId}>
       <td>{displayDate(item.startedAt)}<small>{item.matchId}</small></td><td>{item.heroId===null?"Неизвестен":heroes[String(item.heroId)]??`Герой #${item.heroId}`}</td>
       <td className={item.won===null?"muted":item.won?"win":"loss"}>{item.won===null?"Неизвестен":item.won?"Победа":"Поражение"}</td><td>{item.duration===null?"—":`${Math.floor(item.duration/60)}:${String(item.duration%60).padStart(2,"0")}`}</td><td className="numbers">{item.kills??"—"} / {item.deaths??"—"} / {item.assists??"—"}</td>
-      <td>{levels[item.dataLevel]??item.dataLevel} · {states[item.processing]??item.processing}<small>Реплей: доступность не проверена</small>{item.storedArtifact&&<small>Есть сохранённый артефакт</small>}<small>Отчёт: {reports[item.reportStatus]??item.reportStatus}</small>{item.jobId&&<a href={`/jobs?job=${encodeURIComponent(item.jobId)}`}>Состояние задания</a>}</td>
-      <td><button disabled title="Действие появится в E04">Загрузить и разобрать</button><small>Будет доступно в E04</small></td></tr>)}</tbody></table></div>}
+      <td>{levels[item.dataLevel]??item.dataLevel} · {states[item.processing]??item.processing}<small>{item.storedArtifact?"Есть проверенный реплей":"Доступность реплея не подтверждена"}</small><small>Отчёт: {reports[item.reportStatus]??item.reportStatus}</small>{item.jobId&&<a href={`/jobs?job=${encodeURIComponent(item.jobId)}`}>Состояние задания</a>}</td>
+      <td><button disabled={starting!==null} onClick={()=>void startMatch(item.matchId)}>{starting===item.matchId?"Запуск…":"Загрузить и разобрать"}</button><small><a href={`/matches/${item.matchId}?accountId=${accountId}`}>Открыть матч / импорт</a></small></td></tr>)}</tbody></table></div>}
     <div className="history-actions">{cursor&&<button disabled={loading||syncing} onClick={()=>void load(true,cursor)}>Показать ещё сохранённые</button>}<button disabled={syncing||history?.sourceExhausted===true} onClick={()=>void sync("older")}>Загрузить более ранние из источника</button></div>
     <p className="muted">{history?.sourceExhausted?"Достигнут конец доступной выдачи источника. Это не гарантия полной истории.":"Источник возвращает страницы по 50 матчей. Полнота всей истории не гарантируется."}</p>
   </section>;

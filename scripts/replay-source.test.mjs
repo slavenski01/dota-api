@@ -17,6 +17,8 @@ test('allowlist checks host, port, identity, credentials and query', () => {
 test('candidate is not an artifact; cache and forced refresh retain server-only provenance', async()=>{
   const first=await resolveReplay(pool,storage,'101',{fetcher:provider('101'),accountId:'123'});
   assert.equal(first.status,'candidate');
+  assert.equal((await resolveReplay(pool,storage,'101',{accountId:'123',fetcher:()=>{throw Error('must not fetch');}})).status,'candidate');
+  await assert.rejects(resolveReplay(pool,storage,'101',{accountId:'456',fetcher:provider('101')}),/replay_participant_mismatch/);
   assert.equal((await resolveReplay(pool,storage,'101',{fetcher:()=>{throw Error('must not fetch');}})).status,'candidate');
   assert.equal((await resolveReplay(pool,storage,'101',{force:true,fetcher:provider('101',200,null)})).status,'missing');
   assert.equal((await pool.query("SELECT count(*) FROM dota.artifacts WHERE match_id='101'")).rows[0].count,'0');

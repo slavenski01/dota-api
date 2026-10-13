@@ -1,5 +1,5 @@
-import { openDatabase, migrate, LocalStorage, artifactById } from "@dota/persistence";
-import { startQueue, consume, JobError, executeWorkflow, infrastructureHandlers, type WorkflowMessage, type HistoryMessage, executeHistory } from "@dota/jobs";
+import { openDatabase, migrate, LocalStorage, configuredStorageRoot, artifactById } from "@dota/persistence";
+import { startQueue, consume, JobError, executeWorkflow, replayHandlers, type WorkflowMessage, type HistoryMessage, executeHistory } from "@dota/jobs";
 
 const args = process.argv.slice(2);
 const log = (event: string, details: Record<string, unknown> = {}): void => {
@@ -16,11 +16,11 @@ if (args.length > 1 || (args.length === 1 && args[0] !== "--check")) {
   let boss: Awaited<ReturnType<typeof startQueue>> | undefined;
   try {
     await migrate(pool);
-    const storage = new LocalStorage(process.env.STORAGE_ROOT ?? "./data/storage");
+    const storage = new LocalStorage(configuredStorageRoot());
     await storage.cleanupTemporary();
     boss = await startQueue(process.env.DATABASE_URL);
     const queue = boss;
-    const handlers = infrastructureHandlers(pool, storage);
+    const handlers = replayHandlers(pool, storage);
     const stopConsumer = await consume<WorkflowMessage | HistoryMessage | { kind: "verify_artifact"; artifactId: string }>(boss, pool, async ({ job, signal }) => {
       if (job.data.kind === "history_page") return executeHistory(pool, queue, { job: { ...job, data: job.data }, signal });
       if (job.data.kind === "process_match") return executeWorkflow(pool, queue, { job: { ...job, data: job.data }, signal }, handlers);
