@@ -106,7 +106,7 @@ export type StageHandler = (context: { row: WorkflowRow; signal: AbortSignal; st
 export type StageHandlers = Record<Stage, StageHandler>;
 export async function executeWorkflow(pool: Pool,boss: PgBoss,context: WorkContext<WorkflowMessage>,handlers: StageHandlers): Promise<object> {
   const id=context.job.data.workflowId;
-  const log=(event:string,matchId:string,stage?:string)=>console.log(JSON.stringify({service:"worker",event,job_id:id,match_id:matchId,...(stage?{stage}:{})}));
+  const log=(event:string,matchId:string,stage?:string,details:Record<string,unknown>={})=>console.log(JSON.stringify({service:"worker",event,job_id:id,match_id:matchId,...(stage?{stage}:{}),...details}));
   try {
     for(const stage of STAGES) {
       const prepared=await transaction(pool,async client=>{
@@ -122,6 +122,7 @@ export async function executeWorkflow(pool: Pool,boss: PgBoss,context: WorkConte
       if(prepared.terminal) return {status:prepared.row.payload.status};
       if(prepared.skip) continue;
       log("job.stage_started",prepared.row.match_id,stage);
+      const started = performance.now();
       const {commit,...result}=await handlers[stage]({row:prepared.row,signal:context.signal,steps:prepared.steps});
       await transaction(pool,async client=>{
         const row=await locked(client,id); await fence(client,boss,context);
@@ -138,7 +139,11 @@ export async function executeWorkflow(pool: Pool,boss: PgBoss,context: WorkConte
           if(settled.affected!==1) throw new JobError("claim_lost",true);
         }
       });
-      log("job.stage_completed",prepared.row.match_id,stage);
+      const artifact = result.artifactId ? await artifactById(pool, result.artifactId) : null;
+      log("job.stage_completed",prepared.row.match_id,stage,{
+        duration_ms: Math.round(performance.now() - started), worker_rss_bytes: process.memoryUsage().rss,
+        ...(artifact ? { artifact_bytes: artifact.sizeBytes } : {}),
+      });
       if(result.unavailable) return {status:"unavailable"};
     }
     return {status:"ready"};

@@ -33,3 +33,21 @@ test('rate limit, network and invalid response remain distinct errors', async ()
   await assert.rejects(openDota('/players/1', async () => { throw Error('secret'); }), /provider_unavailable/);
   await assert.rejects(openDota('/players/1', async () => new Response('not json')), /invalid_provider_response/);
 });
+test('optional OpenDota key stays on the fixed source and exceptions are redacted', async () => {
+  const previous = process.env.OPENDOTA_API_KEY;
+  process.env.OPENDOTA_API_KEY = 'test-secret & /?';
+  try {
+    await openDota('/players/123/matches?offset=25', async (input, options) => {
+      const url = new URL(input);
+      assert.equal(url.origin, 'https://api.opendota.com');
+      assert.equal(url.searchParams.get('offset'), '25');
+      assert.equal(url.searchParams.get('api_key'), process.env.OPENDOTA_API_KEY);
+      assert.equal(options.redirect, 'error');
+      return Response.json([]);
+    });
+    await assert.rejects(openDota('/players/123', async url => { throw Error(url); }), error => error.message === 'provider_unavailable');
+  } finally {
+    if (previous === undefined) delete process.env.OPENDOTA_API_KEY;
+    else process.env.OPENDOTA_API_KEY = previous;
+  }
+});

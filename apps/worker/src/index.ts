@@ -1,9 +1,10 @@
 import { openDatabase, migrate, LocalStorage, configuredStorageRoot, artifactById } from "@dota/persistence";
 import { startQueue, consume, JobError, executeWorkflow, replayHandlers, type WorkflowMessage, type HistoryMessage, executeHistory } from "@dota/jobs";
+import { startHealth } from "./health.js";
 
 const args = process.argv.slice(2);
 const log = (event: string, details: Record<string, unknown> = {}): void => {
-  console.log(JSON.stringify({ service: "worker", event, mode: "infrastructure", ...details }));
+  console.log(JSON.stringify({ service: "worker", event, ...details }));
 };
 if (args.length > 1 || (args.length === 1 && args[0] !== "--check")) {
   console.error("Usage: worker [--check]"); process.exitCode = 2;
@@ -14,6 +15,10 @@ if (args.length > 1 || (args.length === 1 && args[0] !== "--check")) {
 } else {
   const pool = openDatabase();
   let boss: Awaited<ReturnType<typeof startQueue>> | undefined;
+  let stopHealth: (() => Promise<void>) | undefined;
+  let requestStop!: () => void;
+  const stopping = new Promise<void>(accept => { requestStop = accept; });
+  process.once("SIGTERM", requestStop); process.once("SIGINT", requestStop);
   try {
     await migrate(pool);
     const storage = new LocalStorage(configuredStorageRoot());
@@ -31,13 +36,15 @@ if (args.length > 1 || (args.length === 1 && args[0] !== "--check")) {
       log("job.completed", { job_id: job.id, match_id: file.matchId });
       return { verified: true };
     });
+    stopHealth = await startHealth(pool, configuredStorageRoot());
     log("worker.started", { queueConnected: true });
-    await new Promise<void>(accept => {
-      const stop = () => { process.off("SIGTERM", stop); process.off("SIGINT", stop); accept(); };
-      process.once("SIGTERM", stop); process.once("SIGINT", stop);
-    });
+    await stopping;
+    await stopHealth(); stopHealth = undefined;
     await stopConsumer();
     log("worker.stopped");
   } catch { log("worker.failed", { code: "worker_infrastructure_failed" }); process.exitCode = 1; }
-  finally { await boss?.stop(); await pool.end(); }
+  finally {
+    process.off("SIGTERM", requestStop); process.off("SIGINT", requestStop);
+    await stopHealth?.(); await boss?.stop(); await pool.end();
+  }
 }

@@ -9,7 +9,11 @@ export type { Storage, StoredFile, Perspective } from "./storage.js";
 
 export function openDatabase(connectionString = process.env.DATABASE_URL): Pool {
   if (!connectionString) throw new Error("DATABASE_URL_required");
-  return new Pool({ connectionString, max: 5, connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000 });
+  const pool = new Pool({ connectionString, max: 5, connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000 });
+  // A database restart can disconnect idle clients. Keep the process available
+  // for readiness probes and new connections without printing credentials.
+  pool.on("error", () => console.error(JSON.stringify({ event: "database.connection_lost" })));
+  return pool;
 }
 export async function transaction<T>(pool: Pool, action: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();

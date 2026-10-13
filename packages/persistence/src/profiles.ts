@@ -19,7 +19,9 @@ export function normalizePlayerId(input: unknown, kind: unknown): { accountId: s
 export type SourceFetch = typeof fetch;
 export async function openDota(path: string, fetcher: SourceFetch = fetch): Promise<unknown> {
   let response: Response;
-  try { response = await fetcher(`https://api.opendota.com/api${path}`, { signal: AbortSignal.timeout(15000), headers: { Accept: "application/json" }, redirect: "error" }); }
+  const url = new URL(`https://api.opendota.com/api${path}`);
+  if (process.env.OPENDOTA_API_KEY) url.searchParams.set("api_key", process.env.OPENDOTA_API_KEY);
+  try { response = await fetcher(url.href, { signal: AbortSignal.timeout(15000), headers: { Accept: "application/json" }, redirect: "error" }); }
   catch { throw new SourceError("provider_unavailable", 503); }
   if (!response.ok) {
     const raw = response.headers.get("retry-after");

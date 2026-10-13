@@ -1,0 +1,168 @@
+# Локальное окружение и восстановление
+
+E10-T01, 13 октября 2026 года. Один локальный пользователь. Web публикует только
+`127.0.0.1:3000`; PostgreSQL и worker не публикуют порты. Внутри контейнера web
+слушает `0.0.0.0`, внешний доступ ограничивает Compose. Авторизации для публичного
+размещения нет. Ресурсы: web до 1 GiB, PostgreSQL до 1 GiB, worker до 3 GiB;
+для сборки и работы VM рекомендуется 4 CPU, 8 GiB RAM и 40 GiB диска.
+
+## Установка
+
+Нужны Git, Node.js 26.3.0 и Docker с Compose v2+ и Buildx. На Linux можно
+использовать Docker Engine; на macOS — Docker Desktop либо Colima. В проверенном
+окружении Apple Silicon установлены Colima 0.10.3, Docker CLI 29.9.0,
+Compose 5.6.0 и Buildx 0.38.0:
+
+```sh
+brew install colima docker docker-compose docker-buildx
+mkdir -p ~/.docker/cli-plugins
+# Если плагины ещё не подключены (не перезаписывайте существующие ссылки):
+ln -s /opt/homebrew/lib/docker/cli-plugins/docker-compose ~/.docker/cli-plugins/docker-compose
+ln -s /opt/homebrew/lib/docker/cli-plugins/docker-buildx ~/.docker/cli-plugins/docker-buildx
+colima start dota-api --cpu 4 --memory 8 --disk 40 --activate=false --ssh-config=false --mount none
+export DOCKER_CONTEXT=colima-dota-api
+```
+
+На Intel Mac путь Homebrew обычно `/usr/local`; используйте `brew --prefix`.
+`DOCKER_CONTEXT` задавайте в каждом новом терминале. Автозапуск VM при входе в
+систему не настраивается. На уже работающем Docker отдельная VM не нужна.
+
+Из корня checkout:
+
+```sh
+node scripts/local.mjs init
+node scripts/local.mjs up
+node scripts/local.mjs status
+curl --fail http://127.0.0.1:3000/api/ready
+```
+
+`init` создаёт `.env` с уникальным 64-символьным hex-паролем и правами 0600,
+повторный вызов сохраняет пароль. `.env` исключён из Git и Docker build context.
+Переменная `DATABASE_URL` в примере нужна только для разработки на хосте;
+Compose формирует внутренний адрес `db` сам. Не меняйте пароль уже созданного
+PostgreSQL простым редактированием `.env`: инициализация существующего volume
+не меняет пароль роли. `DOTA_PORT` задаёт другой порт web.
+
+Базовые Node 26.3.0, Temurin 21.0.12.1 и PostgreSQL 18.6 закреплены тегами и
+SHA-256. npm 11.16.0 устанавливается только в сборочном слое. Сборка выполняет
+TypeScript/Next и Kotlin-тесты, затем переносит production-зависимости,
+миграции, schema, методику и Clarity. В runtime пользователь `node`, не root.
+Служба `migrate` завершается до запуска web/worker; мигратор также защищён
+PostgreSQL advisory lock и проверяет хеши прежних SQL.
+
+При ответе Docker Hub 403 можно задать в `.env`
+`DOTA_IMAGE_REGISTRY=mirror.gcr.io/library`: это кэш официальных образов Google,
+ожидаемые SHA-256 остаются прежними. Именно этот путь проверен в текущей сети.
+Нужна сеть к реестрам образов, npm, Maven/Gradle для первой сборки.
+
+## Источники и данные
+
+На `/profile` выберите явный тип ID: account ID или SteamID64, сохраните профиль,
+обновите историю, выберите матч. Метаданные поступают из OpenDota; реплеи —
+с разрешённых доменов Valve CDN. Можно работать без API-ключа. При наличии
+собственного ключа укажите `OPENDOTA_API_KEY` в `.env` и пересоздайте приложения
+через `node scripts/local.mjs up`. Ключ передаётся только сервером в query
+`api_key`, не попадает в browser bundle, ошибки или резервную копию. При 429
+приложение сохраняет Retry-After; наличие ключа не гарантирует доступ к реплею.
+Steam API и LLM в этом маршруте не используются.
+
+Volumes `dota-api_postgres` и `dota-api_storage` содержат базу/очередь и
+контентно-адресуемые артефакты. `docker compose stop`, перезапуск контейнеров
+и `docker compose down` без `--volumes` сохраняют их. `down --volumes` удаляет
+данные; штатные команды эксплуатации его не выполняют.
+Только незавершённые `.tmp/<uuid>.part` старше 24 часов очищаются при старте
+worker. Проверенные файлы, наборы, старые версии, заметки и основания эпизодов
+автоматически не удаляются. Перед backup эта очистка не нужна.
+
+## Диагностика
+
+```sh
+node scripts/local.mjs status
+docker compose logs --tail=100 web worker migrate
+docker compose stats --no-stream
+docker compose exec -T worker node scripts/storage-audit.mjs
+```
+
+`/api/health` — только жизнь процесса. `/api/ready` — БД, наличие очереди и
+доступ к каталогу Storage (200/503). Health worker использует heartbeat после
+проверки БД/очереди/каталога каждые 5 секунд; старше 20 секунд он невалиден.
+Ошибка БД удаляет heartbeat, восстановление соединения обновляет его.
+Docker помечает контейнер unhealthy после трёх проверок с интервалом 10 секунд;
+сам health-check не перезапускает процесс. `restart: unless-stopped` применяется
+при выходе процесса. `worker --check` проверяет только конфигурацию.
+
+JSON-логи этапов содержат job/match ID, stage, duration_ms, worker_rss_bytes и
+artifact_bytes для опубликованного артефакта. RSS относится к Node worker,
+не JVM и не пиковому RSS всей обработки; общая память — в `compose stats` и
+лимитах контейнера. JVM: heap 1 GiB, группа процессов до 1.5 GiB, 120 секунд,
+stdout до 64 MiB. Web/worker не печатают исходные исключения с URL/паролем.
+Логи ограничены тремя файлами по 10 MiB; сами match/job ID являются личными данными.
+
+## Согласованная резервная копия
+
+```sh
+mkdir -p data/backups
+node scripts/local.mjs backup data/backups/before-update
+node scripts/local.mjs verify data/backups/before-update
+```
+
+Каталог назначения должен быть новым. Команда останавливает web и worker,
+проверяет хеши всех файлов, на которые ссылается БД, создаёт `database.dump`
+(`pg_dump -Fc`), `storage.tar` без незавершённого `.tmp` и `image.tar` с фактическим
+образом worker. Manifest публикуется последним и содержит SHA-256/размер каждого
+файла. После успеха или ошибки запускаются только ранее работающие web/worker.
+Остановленный заранее worker остаётся остановленным. Если операция прервана
+SIGKILL или отключением машины, проверьте `status` и запустите нужные службы
+вручную; каталог без manifest не является готовой копией.
+
+На время копии web недоступен. Не запускайте параллельно другой экземпляр
+приложения, миграции или ручные записи в эту БД/Storage. Локальные developer-
+процессы с доступом к тем же данным тоже нужно остановить. Свободного места
+должно хватать на dump, все файлы и образ. Копия содержит личные данные;
+храните её отдельно от рабочего диска. SHA-256 обнаруживает повреждение,
+но не удостоверяет автора — восстанавливайте только свои доверенные копии.
+`.env` и ключи сохраняются отдельно; потеря старого пароля не мешает восстановлению
+в новую БД с новым паролем. Образ рассчитан на архитектуру машины, где он собран.
+
+## Восстановление и проверка
+
+В свежем checkout сначала `node scripts/local.mjs init`. Для проверки на той же
+машине используйте отдельный проект и свободный порт:
+
+```sh
+node scripts/local.mjs restore data/backups/before-update dota-restored 3001
+```
+
+Команда отказывается от рабочего проекта, существующих контейнеров или volumes
+назначения. Проверяет все хеши, загружает сохранённый образ, проверяет имена и
+типы записей tar, создаёт новую PostgreSQL 18, восстанавливает dump одной
+транзакцией и файлы, затем проверяет каждый зарегистрированный артефакт по
+SHA-256/размеру. Только после этого запускает миграции и приложения и ждёт health.
+Ошибка оставляет отдельный проект для диагностики, исходные данные не меняются.
+
+Откройте `http://127.0.0.1:3001/profile`, сохранённый матч, карту и заметку.
+До окончания проверки продолжайте пользоваться исходным проектом. Для
+последующих команд восстановленного проекта задавайте `COMPOSE_PROJECT_NAME`,
+`DOTA_PORT` и `DOTA_IMAGE` из вывода restore: иначе обычный `up --build` обновит
+его на код текущего checkout. Для штатного обновления исходного проекта:
+backup → `git pull --ff-only` → `node scripts/local.mjs up` → проверка просмотра
+и заметки. Откат с изменившейся схемой выполняйте восстановлением старой копии
+в отдельный проект; автоматических обратных миграций нет.
+
+Проверки инфраструктуры: `npm run test:backup`; после контейнерной сборки —
+`npm run test:ops`. Последняя команда создаёт случайные тестовые проекты,
+останавливает их БД, делает копию и восстановление, проверяет отказ перезаписи,
+после чего удаляет только эти тестовые volumes. Итоги приёмки всего MVP
+фиксируются отдельно в E10-T02.
+
+Фактический результат E10-T01: контейнерный сценарий прошёл за 83.8 секунды,
+проверены loopback-порты, readiness 200→503→200, перезапуск с сохранением
+артефакта, dump/Storage/образ, восстановление и отказ перезаписи. Также успешны
+32 проверки backup, jobs, profiles, workflow, Storage и smoke; TypeScript build,
+typecheck и контейнерная сборка с Kotlin-тестами. Это проверка инфраструктуры
+с синтетическим артефактом; реальный матч относится к E10-T02.
+
+Источники: [Colima](https://github.com/abiosoft/colima),
+[порядок запуска Compose](https://docs.docker.com/compose/how-tos/startup-order/),
+[PostgreSQL image и volume для v18](https://github.com/docker-library/docs/blob/master/postgres/README.md),
+[OpenDota API](https://opendota.apidocumentation.com/).
