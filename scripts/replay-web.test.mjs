@@ -6,7 +6,7 @@ import { createServer } from 'node:net';
 import { createReadStream } from 'node:fs';
 import { mkdtemp, readFile, rm, access } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { openDatabase,migrate,selectProfile,transaction,saveHistoryPage,parseHistory,LocalStorage } from '@dota/persistence';
 import { startQueue,consume,executeWorkflow,replayHandlers } from '@dota/jobs';
@@ -63,6 +63,27 @@ test('production replay HTTP: dedup, missing source, persistent summary, manual 
    const overview=await overviewResponse.json();assert.equal(overview.player.accountId,accountId);assert.ok(overview.series.length);assert.ok(overview.series.some(p=>p.hp!==null));
    assert.equal((await fetch(overviewUrl+'&mode=decision')).status,400);
    assert.equal((await fetch(overviewUrl.replace(accountId,'4294967294'))).status,404);
+   const explorerUrl=`${base}/api/datasets/${done.datasetId}/explore?accountId=${accountId}`;
+   const explorerStarted=performance.now(),explorer=await(await fetch(explorerUrl)).json();
+   assert.equal(explorer.players.length,10);assert.equal(explorer.match.matchId,matchId);assert.equal(explorer.player.accountId,accountId);
+   assert.ok(explorer.window.startSeconds<0);assert.ok(explorer.window.endSeconds>=explorer.match.durationSeconds);
+   for(const participant of explorer.players){const expected=source.players.find(p=>p.player_slot===participant.playerSlot);assert.ok(expected);for(const key of ['kills','deaths','assists'])assert.equal(participant.statistics[key],expected[key]);}
+   let cursor=null,allEvents=[];
+   do {const page=await(await fetch(explorerUrl+'&resource=events&limit=200'+(cursor?'&cursor='+cursor:''))).json();allEvents.push(...page.events);cursor=page.nextCursor;}while(cursor);
+   assert.equal(new Set(allEvents.map(e=>e.id)).size,allEvents.length);
+   const expectedEvents=(await pool.query("SELECT payload FROM dota.records WHERE dataset_id=$1 AND kind='event' ORDER BY game_time_seconds,id COLLATE \"C\"",[done.datasetId])).rows.map(r=>r.payload);
+   assert.deepEqual(allEvents.map(e=>e.id),expectedEvents.map(e=>e.id));
+   let measuredFrame=null;
+   for(const time of [explorer.window.startSeconds,0,60,explorer.window.endSeconds]){
+    const response=await fetch(explorerUrl+`&resource=frame&time=${time}`);assert.equal(response.status,200);const frame=await response.json();assert.equal(frame.time,time);assert.equal(frame.states.length,10);
+    for(const row of frame.states){if(row.state){assert.ok(row.state.gameTimeSeconds<=time&&row.ageSeconds<=5);assert.equal(row.ageSeconds,time-row.state.gameTimeSeconds);}}
+    if(time===60){measuredFrame=frame;assert.ok(frame.states.some(s=>s.mapPosition!==null));}
+   }
+   const noteBody={id:randomUUID(),time:60,playerSlot:explorer.player.playerSlot,mode:'retrospective',content:'Контроль E12: изучить позиции на первой минуте'};
+   const noteUrl=`${base}/api/datasets/${done.datasetId}/notes?accountId=${accountId}`;
+   const noteResponse=await fetch(noteUrl,{method:'POST',headers:{'Content-Type':'application/json',Origin:base},body:JSON.stringify(noteBody)});assert.equal(noteResponse.status,200);
+   assert.equal((await(await fetch(noteUrl)).json()).notes[0].time,60);
+   t.diagnostic(`E12 real replay: 10 participants, ${allEvents.length} events without pagination loss, ${measuredFrame.states.filter(s=>s.mapPosition!==null).length} map positions at 60s; exploration HTTP checks ${Math.round(performance.now()-explorerStarted)}ms`);
    assert.ok(analysis.episodes.length,'real replay should expose a reviewable episode');
    const episode=analysis.episodes[0].episode,ep=`${base}/api/datasets/${done.datasetId}/episodes/${episode.id}`;
    const frameQuery=`accountId=${accountId}&time=${episode.decisionTimeSeconds}`;
@@ -106,9 +127,12 @@ test('production replay HTTP: dedup, missing source, persistent summary, manual 
    assert.equal((await post({matchId,accountId,analysisOptions:{keyItemId:'1'}})).status,400);
    previewPath=`/matches/${matchId}?accountId=${accountId}`;
    if(process.env.E07_PREVIEW_EPISODE)previewPath=episodePath;
+   if(process.env.E12_PREVIEW_EXPLORER)previewPath=`/matches/${matchId}/explore?${new URLSearchParams({accountId,datasetId:done.datasetId,time:'60',hero:String(explorer.player.playerSlot),mode:'retrospective'})}`;
    const newRun=await(await fetch(`${base}/api/datasets/${retried.datasetId}/analysis?accountId=${accountId}&analysisId=${retried.analysisId}`)).json();
    if(newRun.episodes.length){const newReview=await(await fetch(`${base}/api/datasets/${retried.datasetId}/episodes/${newRun.episodes[0].episode.id}/reviews?accountId=${accountId}`)).json();assert.equal(newReview.current,null);}
    assert.equal((await(await fetch(reviewUrl)).json()).current.version,1);
+   assert.equal((await(await fetch(noteUrl)).json()).notes.length,1);
+   assert.equal((await(await fetch(`${base}/api/datasets/${retried.datasetId}/notes?accountId=${accountId}`)).json()).notes.length,0);
    assert.equal((await fetch(`${base}/api/replays/${matchId}/file?accountId=4294967294`)).status,404);
   }
   if(process.env.E04_PREVIEW_GATE){

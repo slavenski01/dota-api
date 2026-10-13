@@ -22,7 +22,7 @@ test('notes bind owner/dataset/time/hero/perspective, survive reload and dedupli
   const reopened=openDatabase(process.env.TEST_DATABASE_URL);try{assert.equal((await readMatchNotes(reopened,'notes-a','1','retrospective'))[0].id,a.id);}finally{await reopened.end();}
   for(const patch of [{content:'changed'},{time:20},{mode:'decision'},{playerSlot:1}])await assert.rejects(saveMatchNote(pool,'notes-a','1',{...input,...patch}),/note_conflict/);
   await assert.rejects(saveMatchNote(pool,'notes-b','1',input),/note_conflict/);
-  for(const patch of [{id:'invalid'},{content:' '},{content:'a'.repeat(2001)},{time:NaN},{time:1201},{playerSlot:5},{mode:'bad'},{extra:true}])await assert.rejects(saveMatchNote(pool,'notes-a','1',{...input,id:randomUUID(),...patch}));
+  for(const patch of [{id:'invalid'},{content:' '},{content:'a'.repeat(2001)},{time:NaN},{time:1201},{playerSlot:5},{mode:'bad'},{mode:['decision']},{extra:true}])await assert.rejects(saveMatchNote(pool,'notes-a','1',{...input,id:randomUUID(),...patch}));
   await assert.rejects(saveMatchNote(pool,'notes-a','999',{...input,id:randomUUID()}),/analysis_not_found/);
   assert.equal((await pool.query("SELECT count(*)::int AS n FROM dota.episode_reviews")).rows[0].n,0);
  }finally{await pool.end();}

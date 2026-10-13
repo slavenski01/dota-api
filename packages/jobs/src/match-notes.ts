@@ -13,7 +13,7 @@ export async function readMatchNotes(pool: Pool, datasetId: string, accountId: s
 export async function saveMatchNote(pool: Pool, datasetId: string, accountId: string, input: unknown): Promise<MatchNote> {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new JobError("invalid_note");
   const value = input as Record<string,unknown>;
-  if (Object.keys(value).some(k=>!["id","playerSlot","time","mode","content"].includes(k)) || typeof value.id !== "string" || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value.id) || typeof value.playerSlot !== "number" || typeof value.time !== "number" || !["decision","retrospective"].includes(String(value.mode)) || typeof value.content !== "string" || !value.content.trim() || value.content.length > 2000) throw new JobError("invalid_note");
+  if (Object.keys(value).some(k=>!["id","playerSlot","time","mode","content"].includes(k)) || typeof value.id !== "string" || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value.id) || typeof value.playerSlot !== "number" || typeof value.time !== "number" || typeof value.mode !== "string" || !["decision","retrospective"].includes(value.mode) || typeof value.content !== "string" || !value.content.trim() || value.content.length > 2000) throw new JobError("invalid_note");
   const view = await readMatchExplorer(pool,datasetId,accountId), mode = value.mode as ViewMode, content = value.content.trim();
   validateViewPoint(view,mode,value.time,value.playerSlot);
   const params = [value.id,datasetId,view.match.matchId,accountId,value.playerSlot,value.time,mode,content];
