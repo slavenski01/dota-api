@@ -3,15 +3,23 @@ import assert from 'node:assert/strict';
 import { openDatabase, migrate, saveDataset, transaction } from '@dota/persistence';
 import { saveEpisodeReview, readEpisodeReviews, readAnalysis, analysisHandler, defaultVersions } from '@dota/jobs';
 import { validateDataset } from '@dota/analysis';
-import { fixture, death } from './fixtures/analysis.mjs';
+import { fixture, death, base } from './fixtures/analysis.mjs';
+import { EPISODE_MAP, POSITION_SOURCE_VERSION } from '../packages/jobs/dist/episode-map.js';
 test('reviews preserve history, enforce optimistic concurrency and remain tied to exact episode version',async()=>{
   const pool=openDatabase(process.env.TEST_DATABASE_URL);
   try{
     await migrate(pool);
-    async function seed(datasetId){
+    async function seed(datasetId,map=false){
       const ctx=fixture([death('death',100)]);
+      if(map){
+        const unknown={status:'unknown',value:null,reason:'Unverified'};
+        ctx.records.push({...base('hero_state','map-state'),playerSlot:0,gameTimeSeconds:98,tick:null,perspective:{mode:'omniscient'},visibility:unknown,
+          position:{status:'known',observedAtSeconds:98,value:{x:100,y:200,z:null,coordinateSystem:'world',mapVersion:null}},hp:unknown,mana:unknown,alive:unknown,inventory:unknown,resources:unknown,lastKnownPosition:null,coverageIds:['map-coverage']});
+        ctx.records.push({...base('coverage','map-coverage'),datasetId,field:'positions',participantSlots:[0],window:{startSeconds:98,endSeconds:98},status:'unknown',reason:'Sparse sample only',resolutionSeconds:5,evidenceIds:[]});
+        for(const r of ctx.records)r.provenance={...r.provenance,sourceVersion:POSITION_SOURCE_VERSION};
+      }
       for(const r of ctx.records)if(r.kind==='coverage')r.datasetId=datasetId;
-      ctx.validation=validateDataset(ctx.records,{datasetId,matchId:'1',artifactId:'replay',inputSha256:'a'.repeat(64),inputVerified:true,parserCompleted:true,parserVersion:'normalized-v1/clarity-5.0.1'});
+      ctx.validation=validateDataset(ctx.records,{datasetId,matchId:'1',artifactId:'replay',inputSha256:'a'.repeat(64),inputVerified:true,parserCompleted:true,parserVersion:map?'normalized-v2/clarity-5.0.1':'normalized-v1/clarity-5.0.1'});
       await saveDataset(pool,{id:datasetId,matchId:'1',parserRunId:null,normalizationVersion:'fixture',inputSha256:'a'.repeat(64),versions:{}},ctx.records);
       await pool.query('INSERT INTO dota.dataset_checks VALUES ($1,$2,$3)',[datasetId,ctx.validation.version,ctx.validation]);
       const output=await analysisHandler(pool)({row:{dataset_id:datasetId,account_id:'1',analysis_options:null,versions:await defaultVersions()},signal:new AbortController().signal});
@@ -39,5 +47,13 @@ test('reviews preserve history, enforce optimistic concurrency and remain tied t
     assert.equal((await readEpisodeReviews(pool,'dataset','1',episode.id)).reviews.length,3);
     await assert.rejects(saveEpisodeReview(pool,'dataset','2',episode.id,input),/episode_not_found/);
     await assert.rejects(saveEpisodeReview(pool,'dataset2','1',episode.id,input),/episode_not_found/);
+    const mapEpisode=await seed('map-dataset',true), mapInput={...input,material:'map',perspective:{mode:'omniscient'}};
+    const mapSave=v=>saveEpisodeReview(pool,'map-dataset','1',mapEpisode.id,v);
+    assert.equal((await readEpisodeReviews(pool,'map-dataset','1',mapEpisode.id)).mapAvailable,true);
+    assert.equal((await readEpisodeReviews(pool,'dataset','1',episode.id)).mapAvailable,false);
+    await assert.rejects(mapSave({...mapInput,perspective:{mode:'team',team:'radiant'}}),/review_map_unavailable/);
+    await assert.rejects(mapSave({...mapInput,mapContext:{backgroundVersion:'fake'}}),/invalid_review/);
+    const mapped=await mapSave(mapInput);assert.deepEqual(mapped.current.mapContext,{backgroundVersion:'7.40',projectionVersion:EPISODE_MAP.projectionVersion,imageSha256:EPISODE_MAP.imageSha256});
+    assert.deepEqual(await mapSave(mapInput),mapped);
   }finally{await pool.end();}
 });

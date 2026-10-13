@@ -1520,6 +1520,16 @@
         "reviewedAt": {
           "$ref": "#/definitions/Timestamp"
         },
+        "mapContext": {
+          "type": "object",
+          "properties": {
+            "backgroundVersion": { "$ref": "#/definitions/Text" },
+            "projectionVersion": { "$ref": "#/definitions/Text" },
+            "imageSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          },
+          "required": ["backgroundVersion", "projectionVersion", "imageSha256"],
+          "additionalProperties": false
+        },
         "material": {
           "enum": [
             "timeline",

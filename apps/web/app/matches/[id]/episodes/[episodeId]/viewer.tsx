@@ -7,6 +7,7 @@ import { gameTime } from "../../../../../lib/game-time";
 import heroes from "../../../../../lib/heroes.json";
 import resources from "../../../../../../../services/replay-parser/src/main/resources/resource-ids.json";
 import EpisodeReviews from "./reviews";
+import EpisodeMap from "./map";
 const names = new Map(Object.entries(resources.items).map(([name,id]) => [id, name.replace(/^item_/, "").replaceAll("_", " ")]));
 const hero = (id: string | null) => (heroes as Record<string,string>)[String(id)] ?? (id ? `Герой ${id}` : "Герой неизвестен");
 const numeric = (field: ViewerState["hp"] | undefined) => field?.status === "known" ? new Intl.NumberFormat("ru-RU",{maximumFractionDigits:1}).format(field.value) : "неизвестно";
@@ -48,9 +49,10 @@ export default function EpisodeViewer({ matchId, datasetId, episodeId, accountId
     {!frame && !error && <p role="status">Загрузка контекста…</p>}
     {frame && <>
       <p className="notice">{frame.limitations[0]}</p>
-      <div className="episode-context"><section className="map-unavailable" aria-label="Карта эпизода"><h2>Карта недоступна</h2><p>{frame.map.reason}</p><p>Туман войны не восстановлен. Неизвестная видимость не означает отсутствие противника.</p></section>
+      <div className="episode-context"><EpisodeMap frame={frame} selectedSlot={slot} select={setSelectedSlot}/>
         <section><h2>Состояние героя</h2><label>Герой <select aria-label="Герой для просмотра" value={slot} onChange={e=>setSelectedSlot(Number(e.target.value))}>{frame.heroes.map(h=><option key={h.playerSlot} value={h.playerSlot}>{hero(h.heroId)} · {h.playerSlot < 128 ? "Radiant" : "Dire"}{h.playerSlot === frame.playerSlot ? " · выбранный игрок" : ""}</option>)}</select></label>
           <p>{observation?.ageSeconds == null ? "Подтверждённого наблюдения нет." : `Наблюдение ${state!.gameTimeSeconds.toFixed(3)} сек; возраст ${observation.ageSeconds.toFixed(3)} сек.`}</p>
+          <p>Координаты мира: {state?.position.status === "known" ? `${state.position.value.x.toFixed(1)}, ${state.position.value.y.toFixed(1)}` : "неизвестно"}.</p>
           <dl className="stat-grid"><div><dt>HP</dt><dd>{numeric(state?.hp)}</dd></div><div><dt>Мана</dt><dd>{numeric(state?.mana)}</dd></div><div><dt>Жизнь</dt><dd>{state?.alive.status === "known" ? state.alive.value ? "жив" : "умирает / мёртв" : "неизвестно"}</dd></div><div><dt>Видимость</dt><dd>{state?.visibility.status === "known" ? state.visibility.value === "visible" ? "виден" : "скрыт" : "неизвестно"}</dd></div></dl>
           <p>Последняя известная позиция: {state?.lastKnownPosition ? `${state.lastKnownPosition.position.x}, ${state.lastKnownPosition.position.y} в ${gameTime(state.lastKnownPosition.observedAtSeconds)} (историческое наблюдение)` : "неизвестно"}.</p>
           <h3>Предметы по слотам</h3>{state?.inventory.status === "known" ? state.inventory.value.length ? <ul>{state.inventory.value.map(i=><li key={i.slot}>Слот {i.slot}: {names.get(i.itemId) ?? `предмет ${i.itemId}`} · заряды {i.charges ?? "неизвестно"}</li>)}</ul> : <p>Подтверждённо пусто.</p> : <p>Неизвестно.</p>}

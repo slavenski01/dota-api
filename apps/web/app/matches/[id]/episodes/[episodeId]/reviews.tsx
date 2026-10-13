@@ -24,14 +24,15 @@ export default function EpisodeReviews({ endpoint, accountId, playerSlot }: { en
   }
   return <section className="review-editor"><h2>Ручная проверка</h2>
     <p>Текущий статус: <strong>{history ? labels[history.current?.status??"unreviewed"] : "загрузка…"}</strong>. Автоматический отбор этот статус не меняет.</p>
-    <p className="muted">Оценка относится к этой версии эпизода и данных. После повторного разбора новая версия требует отдельной проверки. Карта пока недоступна; укажите фактический источник и пределы своей проверки.</p>
+    <p className="muted">Оценка относится к этой версии эпизода и данных. После повторного разбора новая версия требует отдельной проверки. Укажите фактический источник и пределы своей проверки.</p>
+    {material === "map" && <p className="notice">Карта использует приблизительную подложку 7.40. Проверка по ней относится к полному обзору и не подтверждает, что игрок видел угрозу, или что нарисованный путь был проходим.</p>}
     {error&&<p role="alert" className="notice error">{error}</p>}{notice&&<p role="status" className="notice">{notice}</p>}
     <form onSubmit={event=>void save(event)}><fieldset disabled={busy||!history}>
       <label>Результат проверки <select value={status} onChange={e=>setStatus(e.target.value as Review["status"])}>{Object.entries(labels).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
       <label>Пояснение и основания <textarea required maxLength={2000} value={explanation} onChange={e=>setExplanation(e.target.value)} placeholder="Что проверено, какие сведения подтверждают оценку и что осталось неизвестным"/></label>
       <label>Выполнимая альтернатива {status==="confirmed_error"?"(обязательно)":"(если установлена)"}<textarea required={status==="confirmed_error"} maxLength={2000} value={alternative} onChange={e=>setAlternative(e.target.value)} placeholder="Какое действие было доступно и почему его можно было выполнить"/></label>
-      <label>Источник проверки <select value={material} onChange={e=>setMaterial(e.target.value as Review["material"])}><option value="timeline">Таймлайн и состояния в сервисе</option><option value="dota_client">Просмотр в клиенте Dota 2</option></select></label>
-      <label>Перспектива проверки <select value={perspective} onChange={e=>setPerspective(e.target.value)}><option value="omniscient">Полный ретроспективный обзор</option><option value="team">Команда выбранного игрока</option></select></label>
+      <label>Источник проверки <select value={material} onChange={e=>{setMaterial(e.target.value as Review["material"]);if(e.target.value === "map")setPerspective("omniscient");}}><option value="timeline">Таймлайн и состояния в сервисе</option><option value="map" disabled={!history?.mapAvailable}>Приблизительная карта 7.40{history?.mapAvailable ? "" : " — нет позиций в наборе"}</option><option value="dota_client">Просмотр в клиенте Dota 2</option></select></label>
+      <label>Перспектива проверки <select value={perspective} onChange={e=>setPerspective(e.target.value)}><option value="omniscient">Полный ретроспективный обзор</option><option value="team" disabled={material === "map"}>Команда выбранного игрока</option></select></label>
       <label>Автор оценки <input required maxLength={120} value={author} onChange={e=>setAuthor(e.target.value)}/></label>
       <button type="submit">{busy?"Сохранение…":"Сохранить проверку"}</button>
     </fieldset></form>
@@ -39,6 +40,7 @@ export default function EpisodeReviews({ endpoint, accountId, playerSlot }: { en
     {history&&history.reviews.length>0&&<details><summary>История оценок ({history.reviews.length})</summary><ol>{history.reviews.map(r=><li key={r.version}>
       <h3>Версия {r.version} · {labels[r.status]}</h3><p>{r.explanation}</p>{r.alternative&&<p>Альтернатива: {r.alternative}</p>}
       <p className="muted">{r.author} · {stamp(r.reviewedAt)} · {materials[r.material]} · {r.perspective.mode==="omniscient"?"полный обзор":`команда ${r.perspective.team}`}</p>
+      {r.mapContext && <p className="muted">Приблизительная подложка {r.mapContext.backgroundVersion} · проекция {r.mapContext.projectionVersion}</p>}
     </li>)}</ol></details>}
   </section>;
 }

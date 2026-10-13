@@ -84,6 +84,17 @@ test("manual review withdrawal and timeline material round-trip in both language
   assert.deepEqual(await read(result.stdout), [message(episode), complete(1)]);
 });
 
+test("map review provenance round-trips without rewriting historical reviews", async () => {
+  const episode = structuredClone(records.find(r => r.kind === "episode"));
+  episode.review = { version: 1, status: "uncertain", explanation: "Approximate background", alternative: null,
+    author: "Reviewer", reviewedAt: "2026-10-13T00:00:00Z", material: "map", perspective: { mode: "omniscient" },
+    mapContext: { backgroundVersion: "7.40", projectionVersion: "opendota-740-v1", imageSha256: "a".repeat(64) } };
+  assert.deepEqual(validateRecord(episode), episode);
+  const result = kotlin(wire([message(episode), complete(1)]));
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(await read(result.stdout), [message(episode), complete(1)]);
+});
+
 test("CRLF and split UTF-8 are supported without changing the document", async () => {
   const input = validStream.replaceAll("\n", "\r\n");
   assert.deepEqual(await read(input, 1), validMessages);
