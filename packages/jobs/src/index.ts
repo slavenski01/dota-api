@@ -79,6 +79,8 @@ export { readMatchOverview } from "./match-view.js";
 export type { MatchOverview } from "./match-view.js";
 export { readMatchExplorer, readMatchFrame, readMatchEvents, readMatchSeries } from "./match-explorer.js";
 export type { MatchExplorer, MatchFrame, EventFilters, ViewMode } from "./match-explorer.js";
+export { readMatchNotes, saveMatchNote } from "./match-notes.js";
+export type { MatchNote } from "./match-notes.js";
 export { readEpisodeFrame } from "./episode-view.js";
 export type { EpisodeFrame, ViewerState } from "./episode-view.js";
 export { readEpisodeReviews, saveEpisodeReview } from "./episode-reviews.js";

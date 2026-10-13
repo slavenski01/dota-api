@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer } from 'node:net';
@@ -38,6 +39,17 @@ test('production full-match HTTP without episodes: direct links, frames, filters
   assert.deepEqual((await(await fetch(endpoint+'&resource=events&mode=decision')).json()).events,[]);
   const first=await(await fetch(endpoint+'&resource=events')).json();assert.equal(first.events.length,100);assert.ok(first.nextCursor);
   const second=await(await fetch(endpoint+'&resource=events&cursor='+first.nextCursor)).json();assert.equal(second.events.length,100);assert.notEqual(first.events.at(-1).id,second.events[0].id);
+  const notesUrl=`${baseUrl}/api/datasets/explore-web/notes?accountId=1`;
+  const payload={id:randomUUID(),time:600,playerSlot:128,mode:'retrospective',content:'Сверить позицию на десятой минуте'};
+  const post=(body,origin=baseUrl)=>fetch(notesUrl,{method:'POST',headers:{'Content-Type':'application/json',Origin:origin},body:JSON.stringify(body)});
+  assert.equal((await post(payload,'https://untrusted.example')).status,403);
+  assert.equal((await post(payload)).status,200);assert.equal((await post(payload)).status,200);
+  assert.equal((await post({...payload,content:'changed'})).status,409);
+  assert.equal((await post({...payload,id:randomUUID(),time:-1000})).status,400);
+  assert.equal((await post({...payload,id:randomUUID(),content:''})).status,400);
+  assert.equal((await(await fetch(notesUrl)).json()).notes.length,1);
+  assert.equal((await(await fetch(notesUrl+'&mode=decision')).json()).notes.length,0);
+  assert.equal((await fetch(notesUrl.replace('accountId=1','accountId=999'))).status,404);
   const path='/matches/1/explore?accountId=1&datasetId=explore-web&time=600&hero=128&mode=retrospective';
   assert.equal((await fetch(baseUrl+path)).status,200);
   if(process.env.EXPLORER_PREVIEW_GATE){console.log(`Explorer preview: ${baseUrl}${path}`);while(true){try{await access(process.env.EXPLORER_PREVIEW_GATE);break;}catch{}await delay(500);}}

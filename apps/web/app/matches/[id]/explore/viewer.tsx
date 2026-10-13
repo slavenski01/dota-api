@@ -10,6 +10,7 @@ import heroes from "../../../../lib/heroes.json";
 import resources from "../../../../../../services/replay-parser/src/main/resources/resource-ids.json";
 import EpisodeMap from "../episodes/[episodeId]/map";
 import { Chart } from "../overview";
+import MatchNotes from "./notes";
 
 const hero = (id: string | null | undefined) => (heroes as Record<string,string>)[String(id)] ?? (id ? `Герой ${id}` : "Неизвестный герой");
 const itemNames = new Map(Object.entries(resources.items).map(([name,id]) => [id,name.replace(/^item_/, "").replaceAll("_", " ")]));
@@ -83,6 +84,7 @@ export default function Explorer({ matchId }: { matchId: string }) {
           <p>Координаты: {state?.position.status==='known'?`${state.position.value.x.toFixed(1)}, ${state.position.value.y.toFixed(1)}`:'неизвестно'}.</p>
           <h3>Предметы</h3>{state?.inventory.status==='known'?state.inventory.value.length?<ul>{state.inventory.value.map(i=><li key={i.slot}>Слот {i.slot}: {itemNames.get(i.itemId)??i.itemId} · заряды {i.charges??'неизвестно'}</li>)}</ul>:<p>Подтверждённо пустой инвентарь.</p>:<p>Неизвестно.</p>}<p>Готовность и применимость способностей пока не подтверждены.</p>
         </section></div></>}
+      {valid && slot!==undefined && <MatchNotes key={`${datasetId}:${accountId}:${mode}`} datasetId={datasetId} accountId={accountId} matchId={matchId} time={time} slot={slot} mode={mode as "decision"|"retrospective"} heroName={hero(selected?.heroId)}/>}
       <section><h2>События всей игры</h2><div className="filters"><label>Тип события<select value={eventType} onChange={e=>navigate({eventType:e.target.value||null,cursor:null})}><option value="">Все события</option><option value="death">Смерти</option><option value="item">Предметы</option><option value="objective">Объекты</option><option value="fight">Бои</option></select></label>
         <label>Участник событий<select value={eventPlayer} onChange={e=>navigate({eventPlayer:e.target.value||null,cursor:null})}><option value="">Все участники</option>{view.players.map(p=><option key={p.playerSlot} value={p.playerSlot}>{hero(p.heroId)} · слот {p.playerSlot}</option>)}</select></label></div>
         {eventsRead?.value ? <><p className="muted">{eventsRead.value.limitation}</p>{eventsRead.value.events.length ? <ul className="event-list">{eventsRead.value.events.map(e=><li key={e.id}><button onClick={()=>go(e.gameTimeSeconds)}>{gameTime(e.gameTimeSeconds)} · {label(e)}</button></li>)}</ul>:<p>Доступных событий на этой странице нет. Это не доказывает их отсутствие в игре.</p>}
