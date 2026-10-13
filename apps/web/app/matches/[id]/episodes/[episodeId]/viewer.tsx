@@ -6,6 +6,7 @@ import { api } from "../../../../../lib/source-errors";
 import { gameTime } from "../../../../../lib/game-time";
 import heroes from "../../../../../lib/heroes.json";
 import resources from "../../../../../../../services/replay-parser/src/main/resources/resource-ids.json";
+import EpisodeReviews from "./reviews";
 const names = new Map(Object.entries(resources.items).map(([name,id]) => [id, name.replace(/^item_/, "").replaceAll("_", " ")]));
 const hero = (id: string | null) => (heroes as Record<string,string>)[String(id)] ?? (id ? `Герой ${id}` : "Герой неизвестен");
 const numeric = (field: ViewerState["hp"] | undefined) => field?.status === "known" ? field.value : "неизвестно";
@@ -61,5 +62,6 @@ export default function EpisodeViewer({ matchId, datasetId, episodeId, accountId
         <a href={`${endpoint}?accountId=${encodeURIComponent(accountId)}`}>Исходные основания и версии эпизода</a>
       </section>}
     </>}
+    {last && <EpisodeReviews endpoint={endpoint} accountId={accountId} playerSlot={last.playerSlot}/>}
   </main>;
 }

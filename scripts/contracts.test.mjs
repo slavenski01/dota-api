@@ -74,6 +74,16 @@ for (const fixture of invalidCases) {
   });
 }
 
+test("manual review withdrawal and timeline material round-trip in both languages", async () => {
+  const episode = structuredClone(records.find(r => r.kind === "episode"));
+  episode.review = { version: 2, status: "unreviewed", explanation: "Recheck the basis", alternative: null,
+    author: "Reviewer", reviewedAt: "2026-10-13T00:00:00Z", material: "timeline", perspective: { mode: "omniscient" } };
+  assert.deepEqual(validateRecord(episode), episode);
+  const input = wire([message(episode), complete(1)]), result = kotlin(input);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(await read(result.stdout), [message(episode), complete(1)]);
+});
+
 test("CRLF and split UTF-8 are supported without changing the document", async () => {
   const input = validStream.replaceAll("\n", "\r\n");
   assert.deepEqual(await read(input, 1), validMessages);

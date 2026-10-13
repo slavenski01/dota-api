@@ -47,7 +47,8 @@
     "test:episodes": "node --test scripts/episodes.test.mjs",
     "test:analysis-integration": "node scripts/test-postgres.mjs scripts/analysis-integration.test.mjs",
     "test:match-view": "node scripts/test-postgres.mjs scripts/match-view.test.mjs",
-    "test:episode-view": "node scripts/test-postgres.mjs scripts/episode-view.test.mjs"
+    "test:episode-view": "node scripts/test-postgres.mjs scripts/episode-view.test.mjs",
+    "test:episode-reviews": "node scripts/test-postgres.mjs scripts/episode-reviews.test.mjs"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

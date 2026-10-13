@@ -71,3 +71,8 @@ td:nth-child(6) { min-width: 220px; }
 .event-list { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; max-height: 300px; overflow: auto; }
 .event-list button { font-size: 13px; }
 @media(max-width:760px) { .episode-context { grid-template-columns: 1fr; } }
+.review-editor fieldset { border: 0; margin: 0; padding: 0; }
+.review-editor label { display: flex; flex-direction: column; margin: 16px 0; }
+.review-editor textarea { font: inherit; padding: 12px; min-height: 100px; resize: vertical; background: #18221e; color: inherit; border: 1px solid #57704e; border-radius: 8px; }
+.review-editor textarea:focus-visible { outline: 2px solid #f1f4e9; outline-offset: 3px; }
+.review-editor details { margin-top: 24px; overflow-wrap: anywhere; }
