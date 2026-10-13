@@ -1,5 +1,5 @@
 import { openDatabase, migrate, LocalStorage, artifactById } from "@dota/persistence";
-import { startQueue, consume, JobError, executeWorkflow, infrastructureHandlers, type WorkflowMessage } from "@dota/jobs";
+import { startQueue, consume, JobError, executeWorkflow, infrastructureHandlers, type WorkflowMessage, type HistoryMessage, executeHistory } from "@dota/jobs";
 
 const args = process.argv.slice(2);
 const log = (event: string, details: Record<string, unknown> = {}): void => {
@@ -21,7 +21,8 @@ if (args.length > 1 || (args.length === 1 && args[0] !== "--check")) {
     boss = await startQueue(process.env.DATABASE_URL);
     const queue = boss;
     const handlers = infrastructureHandlers(pool, storage);
-    const stopConsumer = await consume<WorkflowMessage | { kind: "verify_artifact"; artifactId: string }>(boss, pool, async ({ job, signal }) => {
+    const stopConsumer = await consume<WorkflowMessage | HistoryMessage | { kind: "verify_artifact"; artifactId: string }>(boss, pool, async ({ job, signal }) => {
+      if (job.data.kind === "history_page") return executeHistory(pool, queue, { job: { ...job, data: job.data }, signal });
       if (job.data.kind === "process_match") return executeWorkflow(pool, queue, { job: { ...job, data: job.data }, signal }, handlers);
       log("job.started", { job_id: job.id });
       if (job.data.kind !== "verify_artifact") throw new JobError("handler_not_available");

@@ -67,3 +67,5 @@ export async function consume<T>(boss: PgBoss, pool: Pool, handler: (context: Wo
     await Promise.allSettled([...running]);
   };
 }
+export { requestHistory, executeHistory, getHistoryStatus } from "./history.js";
+export type { HistoryMessage } from "./history.js";

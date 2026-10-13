@@ -96,3 +96,5 @@ export async function saveDataset(pool: Pool, dataset: DatasetInput, input: unkn
 }
 export { SourceError, normalizePlayerId, openDota, parseProfile, selectProfile, selectedProfile } from "./profiles.js";
 export type { PlayerProfile, SourceFetch } from "./profiles.js";
+export { HISTORY_PAGE_SIZE, parseHistory, fetchHistory, saveHistoryPage, historyState } from "./history.js";
+export type { MatchSummary } from "./history.js";
