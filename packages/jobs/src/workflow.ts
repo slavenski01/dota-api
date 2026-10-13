@@ -3,6 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { type ContractRecord, validateRecord } from "@dota/contracts";
 import { transaction, artifactById, type Pool, type PoolClient, type Storage, selectedProfile, normalizePlayerId } from "@dota/persistence";
 import { PgBoss, QUEUE, JobError, type WorkContext } from "./index.js";
+import { analysisOptions, type AnalysisOptions } from "@dota/analysis";
 
 type JobRecord = Extract<ContractRecord, { kind: "job" }>;
 export const STAGES = ["resolving", "downloading", "parsing", "validating", "analysing"] as const;
@@ -12,11 +13,12 @@ export interface PipelineVersions {
   parser: string; normalization: string; rules: string; skillSha256: string;
   model: string | null; contextSha256: string | null; configSha256: string;
 }
-export interface WorkflowRequest { matchId: string; artifactId?: string; accountId?: string; uploadId?: string }
+export interface WorkflowRequest { matchId: string; artifactId?: string; accountId?: string; uploadId?: string; analysisOptions?: AnalysisOptions | null }
 export interface WorkflowRow {
   id: string; match_id: string; queue_job_id: string; payload: JobRecord;
   artifact_id: string | null; dataset_id: string | null; input_sha256: string | null; versions: PipelineVersions;
   account_id: string | null; upload_id: string | null; progress: import("./replay.js").ReplayProgress | null;
+  analysis_options: AnalysisOptions | null;
 }
 const db = (client: PoolClient) => ({ executeSql: (text: string, values?: unknown[]) => client.query(text, values) });
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -38,9 +40,12 @@ function validateVersions(versions: PipelineVersions): void {
     || !(versions.contextSha256===null || /^[a-f0-9]{64}$/.test(versions.contextSha256))) throw new JobError("invalid_pipeline_versions");
 }
 export async function requestWorkflow(pool: Pool, boss: PgBoss, request: WorkflowRequest, versions: PipelineVersions): Promise<{ id: string; reused: boolean }> {
-  if (!/^(0|[1-9][0-9]{0,19})$/.test(request.matchId) || Object.keys(request).some(key=>!["matchId","artifactId","accountId","uploadId"].includes(key))) throw new JobError("invalid_request");
+  if (!/^(0|[1-9][0-9]{0,19})$/.test(request.matchId) || Object.keys(request).some(key=>!["matchId","artifactId","accountId","uploadId","analysisOptions"].includes(key))) throw new JobError("invalid_request");
   if(request.artifactId!==undefined && !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(request.artifactId)) throw new JobError("invalid_request");
   validateVersions(versions);
+  let options: AnalysisOptions | null;
+  try { options = analysisOptions(request.analysisOptions); } catch { throw new JobError("invalid_analysis_options"); }
+  versions = { ...versions, configSha256: hash(canonical({ pipelineConfig: versions.configSha256, analysisOptions: options })) };
   const accountId = request.accountId !== undefined ? normalizePlayerId(request.accountId,"account").accountId : (await selectedProfile(pool))?.accountId ?? null;
   const upload = request.uploadId ? await artifactById(pool,request.uploadId) : null;
   if (upload && (upload.matchId !== request.matchId || upload.mediaType !== "application/x-dota-upload")) throw new JobError("artifact_match_mismatch");
@@ -49,8 +54,11 @@ export async function requestWorkflow(pool: Pool, boss: PgBoss, request: Workflo
   const fingerprint=hash(canonical({matchId:request.matchId,inputSha256:file?.sha256 ?? upload?.sha256 ?? null,accountId,versions}));
   return transaction(pool,async client=>{
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,731082))",[request.matchId]);
-    const existing=await client.query("SELECT id FROM dota.workflow_jobs WHERE (match_id=$1 AND status IN ('queued','resolving','downloading','parsing','validating','analysing')) OR ($3::boolean AND request_sha256=$2 AND status='ready') ORDER BY created_at DESC LIMIT 1",[request.matchId,fingerprint,file!==null]);
-    if(existing.rows.length) return {id:existing.rows[0].id,reused:true};
+    const existing=await client.query("SELECT id,analysis_options,account_id FROM dota.workflow_jobs WHERE (match_id=$1 AND status IN ('queued','resolving','downloading','parsing','validating','analysing')) OR ($3::boolean AND request_sha256=$2 AND status='ready') ORDER BY created_at DESC LIMIT 1",[request.matchId,fingerprint,file!==null]);
+    if(existing.rows.length) {
+      if (canonical(existing.rows[0].analysis_options) !== canonical(options) || existing.rows[0].account_id !== accountId) throw new JobError("analysis_options_conflict");
+      return {id:existing.rows[0].id,reused:true};
+    }
     await client.query("INSERT INTO dota.matches(match_id) VALUES ($1) ON CONFLICT DO NOTHING",[request.matchId]);
     const previous=(await client.query("SELECT d.id FROM dota.datasets d WHERE d.match_id=$1 AND EXISTS (SELECT 1 FROM dota.records r WHERE r.dataset_id=d.id AND r.kind='match') ORDER BY d.created_at DESC LIMIT 1",[request.matchId])).rows[0];
     const summary = previous || (await client.query("SELECT 1 FROM dota.player_matches WHERE match_id=$1 AND account_id=$2",[request.matchId,accountId])).rowCount;
@@ -58,8 +66,8 @@ export async function requestWorkflow(pool: Pool, boss: PgBoss, request: Workflo
     const payload=validateRecord({schemaVersion:"0.1.0",kind:"job",id,matchId:request.matchId,
       provenance:{source:"derived",acquiredAt:new Date().toISOString(),artifactId:request.artifactId??null,sourceVersion:"e02-v1",inputIds:previous?[previous.id]:[]},
       status:"queued",dataLevel:summary?"summary":"none",reportStatus:"not_requested",limitations:[],error:null});
-    await client.query("INSERT INTO dota.workflow_jobs(id,match_id,queue_job_id,request_sha256,input_sha256,artifact_id,dataset_id,versions,payload,account_id,upload_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
-      [id,request.matchId,queueId,fingerprint,file?.sha256??null,request.artifactId??null,previous?.id??null,versions,payload,accountId,request.uploadId??null]);
+    await client.query("INSERT INTO dota.workflow_jobs(id,match_id,queue_job_id,request_sha256,input_sha256,artifact_id,dataset_id,versions,payload,account_id,upload_id,analysis_options) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",
+      [id,request.matchId,queueId,fingerprint,file?.sha256??null,request.artifactId??null,previous?.id??null,versions,payload,accountId,request.uploadId??null,options]);
     await client.query("INSERT INTO dota.job_history(job_id,payload) VALUES ($1,$2)",[id,payload]);
     const sent=await boss.send(QUEUE,{kind:"process_match",workflowId:id},{id:queueId,db:db(client)});
     if(!sent) throw new JobError("queue_submission_failed",true);
@@ -144,7 +152,7 @@ export async function executeWorkflow(pool: Pool,boss: PgBoss,context: WorkConte
     throw error;
   }
 }
-export async function getWorkflow(pool: Pool,boss: PgBoss,id:string): Promise<{job:JobRecord;queueState:string|null;attempt:number;datasetId:string|null;versions:PipelineVersions; artifactId:string|null; accountId:string|null; progress:WorkflowRow["progress"]}> {
+export async function getWorkflow(pool: Pool,boss: PgBoss,id:string): Promise<{job:JobRecord;queueState:string|null;attempt:number;datasetId:string|null;versions:PipelineVersions; artifactId:string|null; accountId:string|null; progress:WorkflowRow["progress"]; analysisOptions: AnalysisOptions | null}> {
   if(!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(id)) throw new JobError("invalid_job_id");
   return transaction(pool,async client=>{
     const row=await locked(client,id);
@@ -152,7 +160,7 @@ export async function getWorkflow(pool: Pool,boss: PgBoss,id:string): Promise<{j
     if(!TERMINAL.has(row.payload.status) && (!queued || queued.state==="failed" || queued.state==="cancelled")) {
       await change(client,row,queued?.state==="cancelled"?{status:"cancelled",error:null}:{status:"failed",error:{code:"queue_attempts_exhausted",message:"Очередь завершила попытки обработки",retryable:true}});
     }
-    return {job:row.payload,queueState:queued?.state??null,attempt:queued?.retryCount??0,datasetId:row.dataset_id,versions:row.versions,artifactId:row.artifact_id,accountId:row.account_id,progress:row.progress};
+    return {job:row.payload,queueState:queued?.state??null,attempt:queued?.retryCount??0,datasetId:row.dataset_id,versions:row.versions,artifactId:row.artifact_id,accountId:row.account_id,progress:row.progress,analysisOptions:row.analysis_options};
   });
 }
 export async function cancelWorkflow(pool:Pool,boss:PgBoss,id:string): Promise<void> {

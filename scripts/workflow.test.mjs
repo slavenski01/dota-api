@@ -27,6 +27,20 @@ const finished=id=>until(async()=>{const result=await getWorkflow(pool,boss,id);
 before(async()=>{await migrate(pool);boss=await startQueue(process.env.TEST_DATABASE_URL,{retryDelay:1});versions=await defaultVersions();await pool.query("CREATE TABLE public.stage_effect(job_id text,stage text,PRIMARY KEY(job_id,stage))");});
 after(async()=>{await boss?.stop();await pool.end();await rm(dir,{recursive:true});});
 
+test("item and game plan are persisted, validated and distinguish concurrent requests",async()=>{
+ const input=await setup("307");const analysisOptions={keyItemId:"1",gamePlan:"Защищать союзника"};
+ const first=await requestWorkflow(pool,boss,{...input,analysisOptions},versions);
+ assert.deepEqual((await getWorkflow(pool,boss,first.id)).analysisOptions,analysisOptions);
+ assert.equal((await requestWorkflow(pool,boss,{...input,analysisOptions},versions)).id,first.id);
+ await assert.rejects(requestWorkflow(pool,boss,{...input,analysisOptions:{...analysisOptions,gamePlan:"Инициировать"}},versions),/analysis_options_conflict/);
+ await assert.rejects(requestWorkflow(pool,boss,{...input,analysisOptions:{keyItemId:"1"}},versions),/invalid_analysis_options/);
+ const previous=(await getWorkflow(pool,boss,first.id)).versions.configSha256;
+ await cancelWorkflow(pool,boss,first.id);
+ const changed=await requestWorkflow(pool,boss,{...input,analysisOptions:{...analysisOptions,keyItemId:"2"}},versions);
+ assert.notEqual((await getWorkflow(pool,boss,changed.id)).versions.configSha256,previous);
+ await cancelWorkflow(pool,boss,changed.id);
+});
+
 test("concurrent launches deduplicate; enqueue and application job commit atomically",async()=>{
  const input=await setup("301");const launched=await Promise.all(Array.from({length:10},()=>requestWorkflow(pool,boss,input,versions)));
  assert.equal(new Set(launched.map(r=>r.id)).size,1);assert.equal(launched.filter(r=>!r.reused).length,1);

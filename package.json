@@ -42,7 +42,8 @@
     "test:coverage": "node --test scripts/coverage.test.mjs",
     "test:player-context": "node --test scripts/player-context.test.mjs",
     "test:metrics": "node --test scripts/metrics.test.mjs",
-    "test:death-rules": "node --test scripts/death-rules.test.mjs"
+    "test:death-rules": "node --test scripts/death-rules.test.mjs",
+    "test:item-fight-rules": "node --test scripts/item-fight-rules.test.mjs"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
