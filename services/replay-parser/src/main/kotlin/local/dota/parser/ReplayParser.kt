@@ -48,7 +48,7 @@ internal fun rate(total: Number?, duration: Double): Long? = total?.toDouble()?.
     ?.let { floor(it * 60 / duration).toLong() }
 
 class ReplayParser {
-    fun parse(path: Path, expectedMatchId: String): List<ObjectNode> {
+    fun parse(path: Path, expectedMatchId: String, research: ContextResearch? = null): List<ObjectNode> {
         val info = try {
             if (!Files.isRegularFile(path) || Files.size(path) < 16) throw IllegalArgumentException()
             Clarity.infoForFile(path.toString())
@@ -65,7 +65,7 @@ class ReplayParser {
                 if (runner.engineType.id != EngineId.DOTA_S2)
                     throw ReplayFailure("invalid_replay", "Only Dota Source 2 replays are supported.")
                 val collector = BasicCollector(info)
-                runner.runWith(collector)
+                if (research == null) runner.runWith(collector) else runner.runWith(collector, research)
                 val digest = MessageDigest.getInstance("SHA-256")
                 DigestInputStream(Files.newInputStream(path), digest).use { it.transferTo(java.io.OutputStream.nullOutputStream()) }
                 return collector.records(expectedMatchId, digest.digest().joinToString("") { "%02x".format(it) })

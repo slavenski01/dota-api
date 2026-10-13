@@ -3,9 +3,34 @@ package local.dota.parser
 import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
+    if (args.firstOrNull() == "--research-context") {
+        protocolCommand {
+            val from = args.getOrNull(1)?.toDoubleOrNull()
+            val to = args.getOrNull(2)?.toDoubleOrNull()
+            if (args.size != 3 || from == null || to == null) throw ContractViolation("invalid_context_window")
+            val research = try { ContextResearch(from, to) } catch (_: IllegalArgumentException) {
+                throw ContractViolation("invalid_context_window")
+            }
+            val request = Ndjson.readRequest(System.`in`)
+            try {
+                val path = try { java.nio.file.Path.of(request["replayPath"].asText()) } catch (_: java.nio.file.InvalidPathException) {
+                    throw ReplayFailure("invalid_replay", "Replay path is invalid.")
+                }
+                val basic = ReplayParser().parse(path, request["expectedMatchId"].asText(), research)
+                println(ContractValidator.mapper.writeValueAsString(research.report(basic)))
+                0
+            } catch (failure: ReplayFailure) {
+                println(ContractValidator.mapper.writeValueAsString(ContractValidator.mapper.createObjectNode()
+                    .put("researchVersion", CONTEXT_RESEARCH_VERSION).put("status", "error")
+                    .put("code", failure.code).put("message", failure.message)))
+                3
+            }
+        }
+        return
+    }
     when (args.toList()) {
         emptyList<String>(), listOf("--help") ->
-            println("Usage: replay-parser [--help | --version | --check | --protocol | --validate-ndjson]\nDota Source 2 basic replay extraction via NDJSON.")
+            println("Usage: replay-parser [--help | --version | --check | --protocol | --validate-ndjson | --research-context FROM TO]\nDota Source 2 basic replay extraction via NDJSON. Research mode emits a separate JSON document (maximum 120-second window).")
         listOf("--version") -> println("replay-parser 0.0.0")
         listOf("--check") -> println("""{"service":"replay-parser","status":"ok","mode":"basic","replayParsing":true}""")
         listOf("--validate-ndjson") -> protocolCommand {
