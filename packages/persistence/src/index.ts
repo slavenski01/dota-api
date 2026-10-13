@@ -4,7 +4,7 @@ import { Pool, type PoolClient } from "pg";
 import { validateRecord, type ContractRecord } from "@dota/contracts";
 export { Pool } from "pg";
 export type { PoolClient } from "pg";
-export { LocalStorage, configuredStorageRoot, STORAGE_LIMITS, registerArtifact, artifactById, storeStateSegments, readStateWindow } from "./storage.js";
+export { LocalStorage, configuredStorageRoot, STORAGE_LIMITS, registerArtifact, artifactById, storeStateSegments, prepareStateSegments, readStateWindow } from "./storage.js";
 export type { Storage, StoredFile, Perspective } from "./storage.js";
 
 export function openDatabase(connectionString = process.env.DATABASE_URL): Pool {
@@ -103,3 +103,4 @@ export { parseMatchFilters, listMatches } from "./match-list.js";
 export type { MatchFilters, MatchListItem } from "./match-list.js";
 export { REPLAY_MEDIA_TYPE, replayMatchId, replayUrl, replayRequest, verifiedReplay, resolveReplay } from "./replays.js";
 export type { ReplaySource } from "./replays.js";
+export { stateAt } from "./state-index.js";

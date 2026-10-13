@@ -7,6 +7,11 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class ReplaySemanticsTest {
+    @Test fun `unknown life states stay unknown and pregame clocks retain their sign`() {
+        assertEquals(true, lifeObservation(0)); assertEquals(false, lifeObservation(1))
+        assertEquals(false, lifeObservation(2)); assertEquals(null, lifeObservation(99))
+        assertEquals(null, lifeObservation(null)); assertEquals(-10.0, sampledTime(90.0,100.0))
+    }
     @Test fun `stable resource catalog and named objectives do not confuse ownership`() {
         assertEquals("1", ResourceIds.resolve("item", "item_blink"))
         assertEquals(null, ResourceIds.resolve("item", "unknown_item"))

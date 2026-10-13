@@ -37,13 +37,13 @@ fun main(args: Array<String>) {
             Ndjson.validateStream(System.`in`) { node -> print(Ndjson.encode(node)) }
             0
         }
-        listOf("--protocol") -> protocolCommand {
+        listOf("--protocol"), listOf("--normalized") -> protocolCommand {
             val request = Ndjson.readRequest(System.`in`)
             val messages = try {
                 val path = try { java.nio.file.Path.of(request["replayPath"].asText()) } catch (_: java.nio.file.InvalidPathException) {
                     throw ReplayFailure("invalid_replay", "Replay path is invalid.")
                 }
-                val records = ReplayParser().parse(path, request["expectedMatchId"].asText())
+                val records = ReplayParser().parse(path, request["expectedMatchId"].asText(), states = args.toList() == listOf("--normalized"))
                 records.mapIndexed { index, record ->
                     envelope(request["requestId"].asText(), index, "record").apply { set<com.fasterxml.jackson.databind.JsonNode>("record", record) }
                 } + listOf(envelope(request["requestId"].asText(), records.size, "complete").put("recordCount", records.size))

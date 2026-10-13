@@ -129,11 +129,15 @@ function perspectiveOf(record: HeroState): Perspective { return record.perspecti
 export async function storeStateSegments(pool: Pool, storage: Storage, datasetId: string, input: unknown[]): Promise<void> {
   const dataset = (await pool.query("SELECT match_id FROM dota.datasets WHERE id=$1", [datasetId])).rows[0];
   if (!dataset) throw new Error("dataset_not_found");
+  const commit = await prepareStateSegments(storage, datasetId, dataset.match_id, input);
+  await transaction(pool, commit);
+}
+export async function prepareStateSegments(storage: Storage, datasetId: string, matchId: string, input: unknown[]): Promise<(client: PoolClient) => Promise<void>> {
   const groups = new Map<string, HeroState[]>();
   const ids = new Set<string>();
   for (const item of input) {
     const record = validateRecord(item);
-    if (record.kind !== "hero_state" || record.matchId !== dataset.match_id || ids.has(record.id)) throw new Error("invalid_state_segment");
+    if (record.kind !== "hero_state" || record.matchId !== matchId || ids.has(record.id)) throw new Error("invalid_state_segment");
     ids.add(record.id);
     const bucket = `${perspectiveOf(record)}:${Math.floor(record.gameTimeSeconds / 30)}`;
     const group = groups.get(bucket) ?? []; group.push(record); groups.set(bucket, group);
@@ -146,17 +150,17 @@ export async function storeStateSegments(pool: Pool, storage: Storage, datasetId
     const file = await storage.put(Readable.from([await compress(json)]), { maxBytes: STORAGE_LIMITS.segmentBytes });
     prepared.push({ id: randomUUID(), artifactId: randomUUID(), file, group });
   }
-  await transaction(pool, async client => {
+  return async client => {
     for (const entry of prepared) {
       const first = entry.group[0]!; const last = entry.group.at(-1)!;
       for (const slot of new Set(entry.group.map(row => row.playerSlot))) {
-        if (!(await client.query("SELECT 1 FROM dota.participants WHERE match_id=$1 AND player_slot=$2", [dataset.match_id, slot])).rowCount) throw new Error("state_participant_not_found");
+        if (!(await client.query("SELECT 1 FROM dota.participants WHERE match_id=$1 AND player_slot=$2", [matchId, slot])).rowCount) throw new Error("state_participant_not_found");
       }
-      await registerArtifact(client, { id: entry.artifactId, matchId: dataset.match_id, file: entry.file, mediaType: "application/gzip", source: { datasetId, format: "hero-state-json-v1" } });
+      await registerArtifact(client, { id: entry.artifactId, matchId: matchId, file: entry.file, mediaType: "application/gzip", source: { datasetId, format: "hero-state-json-v1" } });
       await client.query("INSERT INTO dota.state_segments VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-        [entry.id, datasetId, dataset.match_id, entry.artifactId, perspectiveOf(first), first.gameTimeSeconds, last.gameTimeSeconds, entry.group.length]);
+        [entry.id, datasetId, matchId, entry.artifactId, perspectiveOf(first), first.gameTimeSeconds, last.gameTimeSeconds, entry.group.length]);
     }
-  });
+  };
 }
 export async function readStateWindow(pool: Pool, storage: Storage, datasetId: string, from: number, to: number, perspective: Perspective): Promise<HeroState[]> {
   if (![from, to].every(Number.isFinite) || from > to || to - from > STORAGE_LIMITS.windowSeconds || !["omniscient", "radiant", "dire"].includes(perspective)) throw new Error("invalid_state_window");

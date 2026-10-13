@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile, mkdtemp, rm} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import {resolve,dirname} from 'node:path';
-import {openDatabase,migrate,LocalStorage,transaction,registerArtifact,REPLAY_MEDIA_TYPE} from '@dota/persistence';
+import {openDatabase,migrate,LocalStorage,transaction,registerArtifact,REPLAY_MEDIA_TYPE,readStateWindow,stateAt} from '@dota/persistence';
 import {normalizationHandler,decodeDataset} from '../packages/jobs/dist/normalization.js';
 import {defaultVersions} from '@dota/jobs';
 test('real replay normalization is committed atomically with provenance and distinct event semantics',async t=>{
@@ -28,6 +28,18 @@ test('real replay normalization is committed atomically with provenance and dist
   assert.ok(rows.filter(r=>r.kind==='coverage').every(r=>r.datasetId===result.datasetId));
   assert.ok(items.every(r=>['purchased','used'].includes(r.data.action)));
   assert.equal((await pool.query('SELECT * FROM dota.parser_runs')).rowCount,1);
+  const states=rows.filter(r=>r.kind==='hero_state');assert.ok(states.length>100);
+  const first=states.sort((a,b)=>a.gameTimeSeconds-b.gameTimeSeconds)[0];assert.ok(first.gameTimeSeconds<0);
+  assert.equal(await stateAt(pool,result.datasetId,first.playerSlot,first.gameTimeSeconds-1),null);
+  const exact=await stateAt(pool,result.datasetId,first.playerSlot,first.gameTimeSeconds,0);assert.equal(exact.ageSeconds,0);
+  const death=rows.find(r=>r.kind==='event'&&r.data.type==='death'&&r.gameTimeSeconds>10);
+  const window=await readStateWindow(pool,storage,result.datasetId,death.gameTimeSeconds-5,death.gameTimeSeconds+5,'omniscient');
+  assert.ok(window.length>50);assert.ok(window.every(r=>r.position.status==='unknown'));
+  assert.ok(window.some(r=>r.hp.status==='known'&&r.mana.status==='known'));
+  assert.ok(window.every(r=>r.resources.status!=='known'||r.resources.value.every(v=>v.canUse.status==='unknown')));
+  assert.deepEqual(await readStateWindow(pool,storage,result.datasetId,0,10,'radiant'),[]);
+  assert.equal(new Set(window.map(r=>`${r.playerSlot}:${r.gameTimeSeconds}`)).size,window.length);
+
  } finally {await pool.end();await rm(root,{recursive:true,force:true});}
 });
 test('decoder rejects truncated, foreign-request and fake successful output',async()=>{
