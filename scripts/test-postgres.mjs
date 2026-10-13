@@ -31,3 +31,6 @@ finally {
   if (started) await database.stop();
   await rm(directory, { recursive: true, force: true });
 }
+// embedded-postgres's async-exit-hook registers beforeExit with a fixed code 0.
+// Cleanup has completed; explicitly preserve the test child's real exit code.
+process.exit(process.exitCode ?? 0);

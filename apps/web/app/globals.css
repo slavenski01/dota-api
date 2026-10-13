@@ -9,4 +9,11 @@ section { margin-top: 56px; padding: 26px; border: 1px solid #34443a; border-rad
 h2 { font-size: 24px; margin: 14px 0; }
 section p:last-child { color: #bac5bf; line-height: 1.6; margin-bottom: 0; }
 footer { margin-top: 64px; font-size: 13px; color: #a1b0a7; }
+a { color: #b4d78c; }
+form { margin-top: 28px; line-height: 2; }
+input, button { font: inherit; border: 1px solid #57704e; border-radius: 8px; padding: 10px 14px; margin-top: 8px; }
+input { background: #18221e; color: inherit; max-width: 100%; }
+button { background: #b4d78c; color: #101716; cursor: pointer; }
+button:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid #f1f4e9; outline-offset: 3px; }
 @media (max-width: 540px) { main { padding-top: 36px; } h1 { margin-top: 36px; } }

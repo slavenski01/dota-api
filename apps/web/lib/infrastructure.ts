@@ -1,0 +1,44 @@
+import { persistence, jobs } from "./backend";
+const { openDatabase, migrate } = persistence;
+const { startQueue, JobError } = jobs;
+
+async function connect() {
+  const connection = process.env.DATABASE_URL;
+  if (!connection) throw new JobError("database_not_configured");
+  const pool = openDatabase(connection);
+  try {
+    await migrate(pool);
+    const boss = await startQueue(connection);
+    return { pool, boss };
+  } catch (error) { await pool.end(); throw error; }
+}
+const globalState = globalThis as typeof globalThis & { dotaInfrastructure?: ReturnType<typeof connect> };
+export function infrastructure(): ReturnType<typeof connect> {
+  return globalState.dotaInfrastructure ??= connect().catch(error => { delete globalState.dotaInfrastructure; throw error; });
+}
+export function json(value: unknown, status = 200): Response {
+  return Response.json(value, { status, headers: { "Cache-Control": "no-store" } });
+}
+export function errorResponse(error: unknown): Response {
+  const code = error instanceof JobError ? error.code : "service_unavailable";
+  const status = code === "job_not_found" ? 404 : ["invalid_request", "invalid_json", "invalid_job_id", "artifact_match_mismatch", "request_too_large"].includes(code) ? 400 : code === "origin_not_allowed" ? 403 : 503;
+  return json({ error: code }, status);
+}
+export function checkOrigin(request: Request): void {
+  const origin = request.headers.get("origin");
+  if (origin && origin !== new URL(request.url).origin) throw new JobError("origin_not_allowed");
+}
+export async function readJson(request: Request): Promise<unknown> {
+  if (!request.headers.get("content-type")?.startsWith("application/json")) throw new JobError("invalid_request");
+  if (!request.body) throw new JobError("invalid_json");
+  const reader = request.body.getReader(); const chunks: Uint8Array[] = []; let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read(); if (done) break;
+      size += value.length; if (size > 8192) { await reader.cancel(); throw new JobError("request_too_large"); }
+      chunks.push(value);
+    }
+    try { return JSON.parse(Buffer.concat(chunks).toString("utf8")); }
+    catch { throw new JobError("invalid_json"); }
+  } finally { reader.releaseLock(); }
+}

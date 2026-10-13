@@ -101,7 +101,7 @@ npm run dev:worker
 
 ## Конфигурация и локальные данные
 
-`.env.example` содержит безопасные примеры будущих серверных настроек. `db:migrate` и `start:worker` читают DATABASE_URL из локального `.env`; worker также читает STORAGE_ROOT. Ключи источников и LLM пока не нужны. Механизм загрузки настроек будет подключаться вместе с соответствующими адаптерами. Секретные параметры нельзя переносить в `NEXT_PUBLIC_*`.
+`.env.example` содержит безопасные примеры будущих серверных настроек. `db:migrate`, `start:web` и `start:worker` читают DATABASE_URL из локального `.env`; worker также читает STORAGE_ROOT. Ключи источников и LLM пока не нужны. Механизм загрузки настроек будет подключаться вместе с соответствующими адаптерами. Секретные параметры нельзя переносить в `NEXT_PUBLIC_*`.
 
 `.gitignore` исключает `.env`/`.env.*` (кроме `.env.example`), реплеи `.dem`/`.dem.bz2`/`.dem.zst`, локальное хранилище `data/`, временные артефакты, зависимости, кэши и результаты сборки. Исходный код, lockfiles и файлы Gradle Wrapper, включая JAR, сохраняются в системе контроля версий.
 
@@ -151,3 +151,32 @@ docs/                  архитектура, контракты и иссле�
 ```
 
 Подробнее: [архитектура](docs/architecture.md), [контракты](docs/contracts.md), [план и журнал сессий](tasks-plan.md), [аналитическая методика](.agents/skills/dota-match-analysis/SKILL.md).
+
+
+## E02: база, хранилище и задания
+
+Эпик E02 реализован: PostgreSQL, миграции, неизменяемые версии, Storage, pg-boss, отмена/восстановление и API состояния. Подробности, пределы ресурсов и backup/restore — в [docs/persistence.md](docs/persistence.md).
+
+Для запуска нужен доступный сервер PostgreSQL 18 и локальный `.env` с `DATABASE_URL` и `STORAGE_ROOT` (без `NEXT_PUBLIC_`). Тесты используют отдельный временный PostgreSQL, не требуют Docker и не создают постоянную базу приложения. Общий Docker Compose остаётся в E10.
+
+```sh
+npm run build:ts
+npm run db:migrate
+# В отдельных терминалах:
+npm run start:web
+npm run start:worker
+```
+
+Откройте `http://127.0.0.1:3000/jobs`: запуск возвращает ID, URL сохраняет его для повторного открытия, polling показывает состояние и позволяет отменить задачу. Получение реплеев и запуск парсера из приложения подключаются в E04: пока штатная обработка явно сообщает о недоступном адаптере. Проверка полного цикла в E02 использует синтетические обработчики.
+
+```sh
+npm run test:postgres-harness
+npm run test:persistence
+npm run test:storage
+npm run test:jobs
+npm run test:workflow
+npm run test:contracts
+npm run smoke
+```
+
+В macOS/Linux тесты запускаются от обычного пользователя; `embedded-postgres` должен выполнить свой postinstall при `npm ci`. PostgreSQL слушает только loopback, временные пароли не выводятся. Команды `start:web`, `dev:web`, `start:worker`, `dev:worker`, `db:migrate` читают `.env` корня.

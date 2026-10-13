@@ -12,7 +12,9 @@
   "dependencies": {
     "next": "16.4.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "@dota/jobs": "0.0.0",
+    "@dota/persistence": "0.0.0"
   },
   "devDependencies": {
     "@types/react": "19.3.0",

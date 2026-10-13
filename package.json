@@ -18,9 +18,9 @@
     "build:parser": "./services/replay-parser/gradlew --project-dir services/replay-parser --no-daemon build installDist",
     "build": "npm run build:ts && npm run build:parser",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "dev:web": "npm run dev --workspace=@dota/web --",
+    "dev:web": "node --env-file-if-exists=.env node_modules/next/dist/bin/next dev apps/web --hostname 127.0.0.1",
     "dev:worker": "node --env-file-if-exists=.env --watch --max-old-space-size=256 apps/worker/src/index.ts",
-    "start:web": "npm run start --workspace=@dota/web --",
+    "start:web": "node --env-file-if-exists=.env node_modules/next/dist/bin/next start apps/web --hostname 127.0.0.1",
     "start:worker": "node --env-file-if-exists=.env --max-old-space-size=256 apps/worker/dist/index.js",
     "start:parser": "./services/replay-parser/build/install/replay-parser/bin/replay-parser",
     "smoke": "node --test scripts/smoke.test.mjs",
@@ -28,7 +28,9 @@
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
     "test:persistence": "node scripts/test-postgres.mjs scripts/persistence.test.mjs",
     "test:storage": "node scripts/test-postgres.mjs scripts/storage.test.mjs",
-    "test:jobs": "node scripts/test-postgres.mjs scripts/jobs.test.mjs"
+    "test:jobs": "node scripts/test-postgres.mjs scripts/jobs.test.mjs",
+    "test:workflow": "node scripts/test-postgres.mjs scripts/workflow.test.mjs",
+    "test:postgres-harness": "node --test scripts/postgres-harness.test.mjs"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

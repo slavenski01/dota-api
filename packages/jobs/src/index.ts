@@ -3,6 +3,8 @@ import { type Pool } from "@dota/persistence";
 export { PgBoss } from "pg-boss";
 export { runBoundedProcess, PROCESS_LIMITS } from "./process.js";
 export type { ProcessSpec } from "./process.js";
+export { requestWorkflow, executeWorkflow, getWorkflow, cancelWorkflow, defaultVersions, infrastructureHandlers, STAGES } from "./workflow.js";
+export type { WorkflowRequest, WorkflowMessage, StageHandlers, StageResult, PipelineVersions } from "./workflow.js";
 export const QUEUE = "match-processing";
 export class JobError extends Error {
   constructor(readonly code: string, readonly retryable = false) { super(code); this.name = "JobError"; }
