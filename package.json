@@ -41,7 +41,8 @@
     "test:normalization": "node scripts/test-postgres.mjs scripts/normalization.test.mjs",
     "test:coverage": "node --test scripts/coverage.test.mjs",
     "test:player-context": "node --test scripts/player-context.test.mjs",
-    "test:metrics": "node --test scripts/metrics.test.mjs"
+    "test:metrics": "node --test scripts/metrics.test.mjs",
+    "test:death-rules": "node --test scripts/death-rules.test.mjs"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
