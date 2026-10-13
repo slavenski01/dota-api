@@ -98,3 +98,5 @@ export { SourceError, normalizePlayerId, openDota, parseProfile, selectProfile, 
 export type { PlayerProfile, SourceFetch } from "./profiles.js";
 export { HISTORY_PAGE_SIZE, parseHistory, fetchHistory, saveHistoryPage, historyState } from "./history.js";
 export type { MatchSummary } from "./history.js";
+export { parseMatchFilters, listMatches } from "./match-list.js";
+export type { MatchFilters, MatchListItem } from "./match-list.js";
