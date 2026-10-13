@@ -31,7 +31,15 @@ export function errorResponse(error: unknown): Response {
 }
 export function checkOrigin(request: Request): void {
   const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) throw new JobError("origin_not_allowed");
+  if (!origin) return;
+  // Next.js may use its internal hostname in request.url. Compare with the
+  // browser-facing Host, restricted to the loopback-only deployment contract.
+  try {
+    const expected = new URL(request.url);
+    const host = request.headers.get("host");
+    if (host) expected.host = host;
+    if (!["127.0.0.1", "localhost", "[::1]"].includes(expected.hostname) || origin !== expected.origin) throw new Error();
+  } catch { throw new JobError("origin_not_allowed"); }
 }
 export async function readJson(request: Request): Promise<unknown> {
   if (!request.headers.get("content-type")?.startsWith("application/json")) throw new JobError("invalid_request");

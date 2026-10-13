@@ -17,3 +17,34 @@ button { background: #b4d78c; color: #101716; cursor: pointer; }
 button:disabled { opacity: .5; cursor: default; }
 button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid #f1f4e9; outline-offset: 3px; }
 @media (max-width: 540px) { main { padding-top: 36px; } h1 { margin-top: 36px; } }
+.profile-page { max-width: 1320px; }
+nav { display: flex; gap: 24px; }
+select { font: inherit; background: #18221e; color: inherit; border: 1px solid #57704e; border-radius: 8px; padding: 10px 14px; margin-top: 8px; max-width: 100%; }
+select:focus-visible { outline: 2px solid #f1f4e9; outline-offset: 3px; }
+.profile-form, .filters { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; }
+.profile-form label, .filters label { display: flex; flex-direction: column; line-height: 1.4; }
+.profile-form button, .filters button { min-height: 42px; }
+.profile-card { margin-top: 32px; }
+.profile-card > div { display: flex; align-items: center; gap: 18px; }
+.profile-card img { border-radius: 12px; }
+.profile-card p { overflow-wrap: anywhere; }
+.match-section { margin-top: 24px; }
+.section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+.muted { color: #bac5bf; font-size: 14px; line-height: 1.6; }
+.notice { padding: 14px 18px; background: #243229; border-radius: 8px; line-height: 1.6; }
+.error { background: #3d2826; border: 1px solid #a26357; }
+.table-scroll { overflow-x: auto; margin-top: 28px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; text-align: left; }
+caption { text-align: left; color: #bac5bf; padding-bottom: 12px; }
+th { font-size: 12px; color: #b4d78c; font-weight: normal; }
+th, td { padding: 16px 12px; border-bottom: 1px solid #34443a; vertical-align: top; }
+td { min-width: 95px; line-height: 1.5; }
+td:first-child { min-width: 158px; }
+td small { display: block; color: #a1b0a7; font-size: 11px; margin-top: 5px; }
+td button { font-size: 12px; white-space: nowrap; margin-top: 0; }
+.numbers { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.win { color: #b4d78c; }.loss { color: #eeaa96; }
+.history-actions { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px; }
+@media(max-width:540px) { .profile-form label,.filters label { width:100%; } .section-heading { align-items: start; flex-direction: column; } .match-section { padding:16px; } }
+.table-scroll table { min-width: 1040px; }
+td:nth-child(6) { min-width: 220px; }
