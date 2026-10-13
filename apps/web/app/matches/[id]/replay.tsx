@@ -53,6 +53,7 @@ export default function MatchReplay({ matchId, accountId, items }: { matchId: st
     {!accountId?<p role="alert">Откройте матч из истории выбранного профиля.</p>:<>
       <p className="muted">Игрок {accountId}. Состояние сохраняется: можно закрыть страницу и вернуться позже.</p>
       <Overview datasetId={state?.datasetId??null} accountId={accountId} summary={detail?.summary??null} fetchedAt={detail?.fetchedAt??null}/>
+      {state?.datasetId && <p className="notice"><Link href={`/matches/${encodeURIComponent(matchId)}/explore?${new URLSearchParams({accountId,datasetId:state.datasetId})}`}>Исследовать всю игру: карта, герои и события</Link></p>}
       {error&&<p className="notice error" role="alert">{error} <button onClick={()=>void refresh().then(()=>setError("")).catch(e=>setError(e.message))}>Повторить загрузку</button></p>}
       <section className="analysis-options"><h2>План этой игры</h2><p>Необязательно. Выберите ключевой предмет и задачу героя для хронологии после покупки. Параметры применяются при нажатии «Загрузить и разобрать» или «Повторить обработку».</p>
         <label>Ключевой предмет <select value={keyItemId} disabled={busy||active} onChange={e=>setKeyItemId(e.target.value)}><option value="">Не выбран</option>{items.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
@@ -68,7 +69,7 @@ export default function MatchReplay({ matchId, accountId, items }: { matchId: st
         <div className="history-actions"><button disabled={busy||active} onClick={()=>void start()}>{state&&!active?"Повторить обработку":"Загрузить и разобрать"}</button>
           {active&&<button disabled={busy} onClick={()=>void cancel()}>Отменить обработку</button>}
           {imported&&<a href={`/api/replays/${encodeURIComponent(matchId)}/file?accountId=${encodeURIComponent(accountId)}`}>Скачать .dem{detail?.replay?` (${size(detail.replay.sizeBytes)})`:""}</a>}</div>
-        {!active&&imported&&<p className="muted">Файл проверен. После успешного разбора доступны таймлайн, состояния и ручные проверки эпизодов. Карта ожидает калибровки; текстовый отчёт ещё не подключён.</p>}
+        {!active&&imported&&<p className="muted">После успешного разбора доступны просмотр всей игры, приблизительная карта 7.40 и ручные проверки эпизодов. AI-тренер отложен после MVP.</p>}
       </section>
       {state?.datasetId&&state.analysisId&&<MatchAnalysis datasetId={state.datasetId} analysisId={state.analysisId} accountId={accountId} items={items}/>}
       <section><h2>Импорт своего реплея</h2><p>Если файл недоступен у источника, выберите .dem, .dem.bz2 или .dem.zst. До 256 MiB; содержимое, матч и участник будут проверены.</p>

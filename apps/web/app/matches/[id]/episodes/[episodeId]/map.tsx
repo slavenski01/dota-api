@@ -4,7 +4,7 @@ import type { EpisodeFrame } from "@dota/jobs";
 import { gameTime } from "../../../../../lib/game-time";
 import heroes from "../../../../../lib/heroes.json";
 
-export default function EpisodeMap({ frame, selectedSlot, select }: { frame: EpisodeFrame; selectedSlot: number | undefined; select: (slot: number) => void }) {
+export default function EpisodeMap({ frame, selectedSlot, select }: { frame: Pick<EpisodeFrame, "states" | "heroes" | "time" | "map" | "mode" | "playerSlot">; selectedSlot: number | undefined; select: (slot: number) => void }) {
   const [failed, setFailed] = useState(false);
   const points = frame.states.filter(s => s.mapPosition !== null);
   const label = (slot: number) => {

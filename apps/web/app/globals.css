@@ -84,6 +84,10 @@ td:nth-child(6) { min-width: 220px; }
 .map-roster button { background: #18221e; color: #bac5bf; font-size: 12px; margin: 0; padding: 6px 8px; }
 .map-roster button[aria-pressed="true"] { background: #b4d78c; color: #101716; }
 #episode-time { display: block; width: 100%; padding: 12px 0; accent-color: #b4d78c; }
+#match-time { display: block; width: 100%; padding: 12px 0; accent-color: #b4d78c; }
+.explorer-controls > label { display: block; margin-top: 24px; }
+.explorer-page tr[aria-selected="true"] { background: #243229; }
+.explorer-page .table-scroll:focus-visible { outline: 2px solid #f1f4e9; }
 .event-list { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; max-height: 300px; overflow: auto; }
 .event-list button { font-size: 13px; }
 @media(max-width:760px) { .episode-context { grid-template-columns: minmax(0, 1fr); } }

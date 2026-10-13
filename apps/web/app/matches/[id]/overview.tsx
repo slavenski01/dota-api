@@ -8,7 +8,7 @@ import heroes from "../../../lib/heroes.json";
 const unknown = "неизвестно";
 const date = (value: string | null) => value ? new Intl.DateTimeFormat("ru-RU", { timeZone: "Europe/Moscow", dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) + " МСК" : unknown;
 const heroName = (id: string | number | null) => (heroes as Record<string, string>)[String(id)] ?? (id === null ? unknown : `Герой ${id}`);
-function Chart({ points, field, label }: { points: MatchOverview["series"]; field: "hp" | "mana"; label: string }) {
+export function Chart({ points, field, label }: { points: MatchOverview["series"]; field: "hp" | "mana"; label: string }) {
   const known = points.filter(p => p[field] !== null);
   if (!known.length) return <section><h3>{label}</h3><p>Наблюдения отсутствуют. Значения не восстановлены из итоговой статистики.</p></section>;
   const min = points[0]!.time, max = points.at(-1)!.time, ceiling = Math.max(1, ...known.map(p => p[field]!));
@@ -59,6 +59,6 @@ export default function Overview({ datasetId, accountId, summary, fetchedAt }: {
     <p className="muted">Источник: {data ? `${player!.provenance.source}, ${player!.provenance.sourceVersion ?? "версия неизвестна"}; получено ${date(player!.provenance.acquiredAt)}` : summary ? `OpenDota, история; получено ${date(fetchedAt)}` : unknown}.</p>
     {error && <p role="alert">{error}</p>}
     {datasetId && !data && !error && <p role="status">Загрузка статистики реплея…</p>}
-    {data ? <><h3>Изменение ресурсов во времени</h3><p>Полный ретроспективный обзор. Эти графики не показывают, что игрок знал в момент решения. Координаты, обзор и применимость способностей пока не подтверждены.</p><Chart points={data.series} field="hp" label="Здоровье (HP)"/><Chart points={data.series} field="mana" label="Мана"/><p className="muted">Рядов золота, опыта и добиваний нет. GPM не является стоимостью имущества.</p></> : <p>Графики появятся после успешного разбора реплея при наличии наблюдений. Доступная сводка сохраняется и при недоступном реплее.</p>}
+    {data ? <><h3>Изменение ресурсов во времени</h3><p>Полный ретроспективный обзор. Эти графики не показывают, что игрок знал в момент решения. Координаты доступны на приблизительной карте 7.40; командный обзор и применимость способностей пока не подтверждены.</p><Chart points={data.series} field="hp" label="Здоровье (HP)"/><Chart points={data.series} field="mana" label="Мана"/><p className="muted">Рядов золота, опыта и добиваний нет. GPM не является стоимостью имущества.</p></> : <p>Графики появятся после успешного разбора реплея при наличии наблюдений. Доступная сводка сохраняется и при недоступном реплее.</p>}
   </section>;
 }
