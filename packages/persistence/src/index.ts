@@ -100,3 +100,5 @@ export { HISTORY_PAGE_SIZE, parseHistory, fetchHistory, saveHistoryPage, history
 export type { MatchSummary } from "./history.js";
 export { parseMatchFilters, listMatches } from "./match-list.js";
 export type { MatchFilters, MatchListItem } from "./match-list.js";
+export { REPLAY_MEDIA_TYPE, replayMatchId, replayUrl, replayRequest, verifiedReplay, resolveReplay } from "./replays.js";
+export type { ReplaySource } from "./replays.js";
