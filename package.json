@@ -35,7 +35,8 @@
     "test:history": "node scripts/test-postgres.mjs scripts/history.test.mjs",
     "test:match-list": "node scripts/test-postgres.mjs scripts/match-list.test.mjs",
     "test:profile-web": "node scripts/test-postgres.mjs scripts/profile-web.test.mjs",
-    "test:replay-source": "node scripts/test-postgres.mjs scripts/replay-source.test.mjs"
+    "test:replay-source": "node scripts/test-postgres.mjs scripts/replay-source.test.mjs",
+    "test:replay-import": "node scripts/test-postgres.mjs scripts/replay-import.test.mjs"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

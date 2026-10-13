@@ -69,3 +69,5 @@ export async function consume<T>(boss: PgBoss, pool: Pool, handler: (context: Wo
 }
 export { requestHistory, executeHistory, getHistoryStatus } from "./history.js";
 export type { HistoryMessage } from "./history.js";
+export { REPLAY_LIMITS, importReplay, downloadReplay, validateReplay } from "./replay.js";
+export type { ReplayProgress, ImportedReplay } from "./replay.js";
