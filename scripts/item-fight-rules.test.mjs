@@ -27,6 +27,7 @@ test('F01 requires verified boundaries and complete losses of both teams; never 
   const events = [fight(), death('enemy', 110, 128)]; assert.equal(evaluateF01(fixture(events))[0].status, 'skipped');
   const ctx = fixture(events, { complete: ['fights'] }); ctx.validation.coverage.find(c => c.field === 'deaths').participantSlots.pop(); assert.equal(evaluateF01(ctx)[0].status, 'skipped');
   const bad = fight(); bad.data.window.endSeconds = 1300; assert.equal(evaluateF01(fixture([bad], { complete: ['fights'] }))[0].status, 'skipped');
+  const conflict = fixture(events, { complete: ['fights'] }); conflict.validation.issues.push({ field: 'deaths', code: 'source_conflict', recordIds: ['enemy'] }); assert.equal(evaluateF01(conflict)[0].status, 'skipped');
 });
 test('F01 counts inclusive boundaries and repeated buyback deaths, orients losses for Dire', () => {
   const events = [fight(), death('a', 100, 128), death('b', 120, 128, true), death('own', 110), death('outside', 120.1)];

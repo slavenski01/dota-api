@@ -12,7 +12,7 @@ import { openDatabase,migrate,selectProfile,transaction,saveHistoryPage,parseHis
 import { startQueue,consume,executeWorkflow,replayHandlers } from '@dota/jobs';
 async function until(fn){for(let n=0;n<600;n++){const value=await fn();if(value)return value;await delay(100);}throw Error('timeout');}
 test('production replay HTTP: dedup, missing source, persistent summary, manual validation and download',async(t)=>{
- const pool=openDatabase(process.env.TEST_DATABASE_URL);const root=await mkdtemp('/tmp/dota-replay-web-');let web,boss,stop;
+ const pool=openDatabase(process.env.TEST_DATABASE_URL);const root=await mkdtemp('/tmp/dota-replay-web-');let web,boss,stop;let previewPath='/profile';
  try {
   await migrate(pool);
   await selectProfile(pool,'123','account',async()=>Response.json({profile:{account_id:123,personaname:'Тестовый игрок'},fh_unavailable:true}));
@@ -45,8 +45,14 @@ test('production replay HTTP: dedup, missing source, persistent summary, manual 
   if(manifest){
    const sample=manifest.records[0],matchId=String(sample.matchId),accountId=String(manifest.accountId),path=resolve(dirname(manifestPath),sample.replayFile);
    const result=await upload(matchId,accountId,createReadStream(path));assert.equal(result.status,202);const {id}=await result.json();
-   const done=await finished(id);assert.equal(done.job.error.code,'analysis_not_connected');assert.ok(done.artifactId);assert.equal(done.accountId,accountId);assert.equal(done.progress.phase,'stored');
+   const done=await finished(id);assert.equal(done.job.status,'ready');assert.equal(done.job.error,null);assert.ok(done.analysisId);assert.ok(done.artifactId);assert.equal(done.accountId,accountId);assert.equal(done.progress.phase,'stored');
    assert.equal(done.job.dataLevel,'replay_context');assert.ok(done.datasetId);
+   const analysisUrl=`${base}/api/datasets/${done.datasetId}/analysis?accountId=${accountId}&analysisId=${done.analysisId}`;
+   const analysisResponse=await fetch(analysisUrl);assert.equal(analysisResponse.status,200);
+   const analysis=await analysisResponse.json();assert.equal(analysis.mode,'retrospective');assert.ok(analysis.primaryEpisodeIds.length<=3);assert.ok(analysis.results.some(r=>r.ruleId==='D01'));assert.equal(analysis.versions.rules,'e06-v1');
+   for(const candidate of analysis.episodes){const detail=await fetch(`${base}/api/datasets/${done.datasetId}/episodes/${candidate.episode.id}?accountId=${accountId}`);assert.equal(detail.status,200);const data=await detail.json();assert.equal(data.evidence.length,candidate.episode.evidenceIds.length);}
+   assert.equal((await fetch(analysisUrl.replace(accountId,'4294967294'))).status,404);
+   assert.equal((await fetch(analysisUrl+'&mode=decision')).status,400);
    const contextUrl=`${base}/api/datasets/${done.datasetId}/context?time=60&playerSlot=0`;
    const contextResponse=await fetch(contextUrl);assert.equal(contextResponse.status,200);
    const context=await contextResponse.json();assert.equal(context.mode,'decision');assert.equal(context.states.length,10);assert.ok(context.states.every(s=>s.hp.status==='unknown'&&s.visibility.status==='unknown'));
@@ -57,11 +63,15 @@ test('production replay HTTP: dedup, missing source, persistent summary, manual 
 
    const downloaded=await fetch(`${base}/api/replays/${matchId}/file?accountId=${accountId}`);assert.equal(downloaded.status,200);assert.match(downloaded.headers.get('content-disposition'),/\.dem/);
    const hash=createHash('sha256');for await(const chunk of downloaded.body)hash.update(chunk);assert.equal(hash.digest('hex'),sample.sha256Replay);
-   const retry=await(await post({matchId,accountId})).json();assert.equal((await finished(retry.id)).artifactId,done.artifactId);
+   const analysisOptions={keyItemId:analysis.purchases[0]?.data.itemId??'1',gamePlan:'Контрольный план: защищать союзника'};
+   const retry=await(await post({matchId,accountId,analysisOptions})).json();const retried=await finished(retry.id);assert.equal(retried.job.status,'ready');assert.equal(retried.artifactId,done.artifactId);assert.deepEqual(retried.analysisOptions,analysisOptions);
+   const revised=await(await fetch(`${base}/api/datasets/${retried.datasetId}/analysis?accountId=${accountId}&analysisId=${retried.analysisId}`)).json();assert.deepEqual(revised.options,analysisOptions);if(analysis.purchases.length)assert.ok(revised.results.some(r=>r.ruleId==='I01'&&r.status==='signal'));
+   assert.equal((await post({matchId,accountId,analysisOptions:{keyItemId:'1'}})).status,400);
+   previewPath=`/matches/${matchId}?accountId=${accountId}`;
    assert.equal((await fetch(`${base}/api/replays/${matchId}/file?accountId=4294967294`)).status,404);
   }
   if(process.env.E04_PREVIEW_GATE){
-   console.log(`E04 browser preview: ${base}/profile`);
+   console.log(`Replay browser preview: ${base}${previewPath}`);
    while(true){try{await access(process.env.E04_PREVIEW_GATE);break;}catch{}await delay(500);}
   }
  }finally{if(web&&web.exitCode===null){const ended=once(web,'exit');web.kill('SIGTERM');await ended;}await stop?.();await boss?.stop();await pool.end();await rm(root,{recursive:true,force:true});}

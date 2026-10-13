@@ -31,6 +31,7 @@ export function evaluateI01(context: AnalysisContext, input: AnalysisOptions | n
     const window = { startSeconds: purchase.gameTimeSeconds, endSeconds: purchase.gameTimeSeconds + 180 };
     const output = result("I01", purchase.id, window, config, [{ field: "items", mode: "positive_event", participantSlots: [context.player.playerSlot], window: { startSeconds: purchase.gameTimeSeconds, endSeconds: purchase.gameTimeSeconds } }]);
     output.status = "signal";
+    output.dataComplete = true;
     const events = context.events.filter(e => within(e, window) && ["death", "objective", "fight"].includes(e.data.type) && positiveEvent(context, e) && (e.data.type !== "fight" || verifiedFight(context, e)));
     output.eventIds = events.map(e => e.id);
     output.evidenceIds = unique([purchase.id, ...events.map(e => e.id)]);
@@ -39,7 +40,8 @@ export function evaluateI01(context: AnalysisContext, input: AnalysisOptions | n
     for (const field of ["deaths", "fights", "objectives", "time"] as const) {
       output.requirements.push({ field, mode: "complete_window", participantSlots: PLAYER_SLOTS, window });
       const covered = completeWindow(context, field, window);
-      if (!covered.usable) output.limitations.push(`${field}: покрытие окна неполно; отсутствие событий не установлено.`);
+      const label = { deaths: "Смерти", fights: "Бои", objectives: "Объекты", time: "Временная ось" }[field];
+      if (!covered.usable) { output.dataComplete = false; output.limitations.push(`${label}: покрытие окна неполно; отсутствие событий не установлено.`); }
       else output.evidenceIds = unique([...output.evidenceIds, ...covered.evidenceIds]);
     }
     setView(context, output, window); return output;
@@ -67,6 +69,7 @@ export function evaluateF01(context: AnalysisContext): RuleResult[] {
     output.facts = [`Потери героев: своя команда — ${own}, противник — ${enemy}. Определение боя: ${fight.data.definition}`];
     if (enemy > own) output.facts.push("Бой с преимуществом по потерям героев.");
     const objectCoverage = completeWindow(context, "objectives", after), time = completeWindow(context, "time", after);
+    output.dataComplete = objectCoverage.usable && time.usable;
     output.requirements.push({ field: "objectives", mode: "complete_window", participantSlots: PLAYER_SLOTS, window: after });
     output.limitations = ["Соотношение смертей не доказывает преимущество по золоту, объектам или стратегии. Повторные смерти после выкупа учтены."];
     if (objectCoverage.usable && time.usable) {

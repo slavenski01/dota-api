@@ -48,3 +48,10 @@ td button { font-size: 12px; white-space: nowrap; margin-top: 0; }
 @media(max-width:540px) { .profile-form label,.filters label { width:100%; } .section-heading { align-items: start; flex-direction: column; } .match-section { padding:16px; } }
 .table-scroll table { min-width: 1040px; }
 td:nth-child(6) { min-width: 220px; }
+.analysis-options label { display: flex; flex-direction: column; gap: 4px; margin-top: 18px; }
+.analysis-options textarea { font: inherit; background: #18221e; color: inherit; border: 1px solid #57704e; border-radius: 8px; padding: 12px; min-height: 100px; resize: vertical; width: 100%; }
+.analysis-options textarea:focus-visible, summary:focus-visible { outline: 2px solid #f1f4e9; outline-offset: 3px; }
+.analysis-results { line-height: 1.6; overflow-wrap: anywhere; }
+.analysis-results article { border-top: 1px solid #34443a; margin-top: 24px; padding-top: 12px; }
+.analysis-results details { margin: 18px 0; }
+.analysis-results summary { cursor: pointer; color: #b4d78c; }

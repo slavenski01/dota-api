@@ -36,15 +36,18 @@ export interface RuleResult {
   anchorId: string | null; window: Window; requirements: Requirement[];
   status: "signal" | "no_signal" | "skipped"; reasons: string[]; evidenceIds: string[];
   facts: string[]; limitations: string[]; eventIds: string[]; viewWindow: Window | null; viewClipped: boolean;
+  dataComplete: boolean;
 }
 export interface RuleDefinition {
   id: RuleId; version: string; evaluate(context: AnalysisContext): RuleResult[];
 }
 export function result(ruleId: RuleId, anchorId: string | null, window: Window, config: RuleResult["config"], requirements: Requirement[]): RuleResult {
   return { ruleId, version: RULES_VERSION, config, configSha256: fingerprint(config), anchorId, window, requirements,
-    status: "skipped", reasons: [], evidenceIds: [], facts: [], limitations: [], eventIds: [], viewWindow: null, viewClipped: false };
+    status: "skipped", reasons: [], evidenceIds: [], facts: [], limitations: [], eventIds: [], viewWindow: null, viewClipped: false, dataComplete: false };
 }
 export function completeWindow(context: AnalysisContext, field: Coverage["field"], window: Window, slots = PLAYER_SLOTS) {
+  const issues = context.validation.issues.filter(i => i.field === null || i.field === field);
+  if (issues.length) return { usable: false, reasons: unique(issues.map(i => i.code)), evidenceIds: [] };
   return windowUsability(context.validation, field, slots, window);
 }
 export function eventField(event: GameEvent): Coverage["field"] {

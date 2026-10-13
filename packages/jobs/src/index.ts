@@ -74,3 +74,4 @@ export type { ReplayProgress, ImportedReplay } from "./replay.js";
 export { replayHandlers } from "./replay-workflow.js";
 export { readDatasetContext } from "./player-context.js";
 export { datasetValidation } from "./dataset-validation.js";
+export { analysisHandler, readAnalysis, readEpisode } from "./analysis.js";

@@ -153,6 +153,15 @@ npm run smoke
 
 HTTP состояние задания дополнено `artifactId`, `accountId` и `progress`
 (phase, bytes, totalBytes или null). Версии базовых NDJSON/record-контрактов
-не меняются. После импорта последующая обработка завершается `unavailable`
-с кодом `analysis_not_connected`; проверенный файл остаётся доступным.
+не меняются. В E06 успешный импорт/разбор/отбор завершает задание `ready`;
+`analysisId` ссылается на неизменяемый результат, текст ещё не запрошен.
 Подробнее: [импорт](replay-import.md).
+
+
+## Дополнение E06
+
+Базовые записи `episode`/`RuleSignal` и NDJSON 0.1.0 не изменены. Аналитический
+HTTP-контракт `e06-v1` описан типами `RuleResult`, `AnalysisRun`, `SelectedEpisode`
+в `@dota/analysis`: конфигурация, evidence, три исхода правил и явная полнота.
+Полный результат хранится отдельно от сырых записей парсера, сами эпизоды —
+в `dota.records`. [API и правила версионирования](analysis.md).

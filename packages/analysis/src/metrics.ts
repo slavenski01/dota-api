@@ -51,10 +51,12 @@ export function summaryMetrics(context: AnalysisContext): Record<string, Metric>
   const duration = context.match.durationSeconds;
   const allies = context.participants.filter(p => p.team === context.player.team);
   const usable = duration !== null && completeWindow(context, "statistics", { startSeconds: duration, endSeconds: duration }, allies.map(p => p.playerSlot)).usable;
+  const ownUsable = duration !== null && completeWindow(context, "statistics", { startSeconds: duration, endSeconds: duration }, [context.player.playerSlot]).usable &&
+    completeWindow(context, "time", { startSeconds: 0, endSeconds: duration }, [context.player.playerSlot]).usable;
   const stats = context.player.statistics;
   const ids = [context.match.id, ...allies.map(p => p.id)];
   return {
-    deathsPerTenMinutes: deathsPerTenMinutes(usable ? stats.deaths : null, duration, ids),
+    deathsPerTenMinutes: deathsPerTenMinutes(ownUsable ? stats.deaths : null, duration, [context.match.id, context.player.id]),
     killParticipation: killParticipation(usable ? stats.kills : null, usable ? stats.assists : null,
       usable && allies.every(p => p.statistics.kills !== null) ? allies.reduce((sum, p) => sum + p.statistics.kills!, 0) : null, ids),
   };

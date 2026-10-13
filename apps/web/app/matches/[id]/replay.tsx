@@ -3,8 +3,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { MatchSummary } from "@dota/persistence";
 import { api } from "../../../lib/source-errors";
+import MatchAnalysis from "./analysis";
 type Detail = { summary: MatchSummary | null; jobId: string | null; replay: { sizeBytes: number } | null };
-type State = { artifactId: string | null; analysisOptions: { keyItemId: string; gamePlan: string } | null; job: { status: string; limitations: string[]; error: { code: string } | null }; queueState: string | null; progress: { phase: string; bytes: number; totalBytes: number | null } | null };
+type State = { datasetId: string | null; analysisId: string | null; artifactId: string | null; analysisOptions: { keyItemId: string; gamePlan: string } | null; job: { status: string; limitations: string[]; error: { code: string } | null }; queueState: string | null; progress: { phase: string; bytes: number; totalBytes: number | null } | null };
 const terminal = new Set(["ready", "unavailable", "failed", "cancelled"]);
 const states: Record<string,string> = { queued:"В очереди",resolving:"Поиск реплея",downloading:"Подготовка реплея",parsing:"Проверка завершена",validating:"Проверка данных",analysing:"Анализ",ready:"Готово",unavailable:"Обработка недоступна",failed:"Ошибка обработки",cancelled:"Отменено" };
 const phases: Record<string,string> = { receiving:"Получено",decompressing:"Распаковано",checking:"Проверка файла и участника",stored:"Файл сохранён" };
@@ -52,7 +53,7 @@ export default function MatchReplay({ matchId, items }: { matchId: string; items
       <p className="muted">Игрок {accountId}. Состояние сохраняется: можно закрыть страницу и вернуться позже.</p>
       {detail?.summary&&<section><h2>Статистика матча</h2><p>K / D / A: {detail.summary.kills??"—"} / {detail.summary.deaths??"—"} / {detail.summary.assists??"—"} · {detail.summary.won===null?"Результат неизвестен":detail.summary.won?"Победа":"Поражение"}</p></section>}
       {error&&<p className="notice error" role="alert">{error}</p>}
-      <section><h2>План этой игры</h2><p>Необязательно. Выберите ключевой предмет и задачу героя для хронологии после покупки. Параметры применяются при нажатии «Загрузить и разобрать» или «Повторить обработку».</p>
+      <section className="analysis-options"><h2>План этой игры</h2><p>Необязательно. Выберите ключевой предмет и задачу героя для хронологии после покупки. Параметры применяются при нажатии «Загрузить и разобрать» или «Повторить обработку».</p>
         <label>Ключевой предмет <select value={keyItemId} disabled={busy||active} onChange={e=>setKeyItemId(e.target.value)}><option value="">Не выбран</option>{items.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
         <label>План игры <textarea value={gamePlan} disabled={busy||active} maxLength={2000} onChange={e=>setGamePlan(e.target.value)} placeholder="Например: защищать основного героя и начинать бой после готовности команды"/></label>
         <p className="muted">Без этих параметров доступен журнал покупок; ключевой тайминг не выбирается автоматически.</p>
@@ -65,8 +66,9 @@ export default function MatchReplay({ matchId, items }: { matchId: string; items
         <div className="history-actions"><button disabled={busy||active} onClick={()=>void start()}>{state&&!active?"Повторить обработку":"Загрузить и разобрать"}</button>
           {active&&<button disabled={busy} onClick={()=>void cancel()}>Отменить обработку</button>}
           {imported&&<a href={`/api/replays/${encodeURIComponent(matchId)}/file?accountId=${encodeURIComponent(accountId)}`}>Скачать .dem{detail?.replay?` (${size(detail.replay.sizeBytes)})`:""}</a>}</div>
-        {!active&&imported&&<p className="muted">Файл проверен. События и наблюдения героев сохраняются при успешном разборе. Карта и аналитический отчёт ещё не подключены.</p>}
+        {!active&&imported&&<p className="muted">Файл проверен. События и наблюдения героев сохраняются при успешном разборе. Карта и текстовый отчёт ещё не подключены.</p>}
       </section>
+      {state?.datasetId&&state.analysisId&&<MatchAnalysis datasetId={state.datasetId} analysisId={state.analysisId} accountId={accountId} items={items}/>}
       <section><h2>Импорт своего реплея</h2><p>Если файл недоступен у источника, выберите .dem, .dem.bz2 или .dem.zst. До 256 MiB; содержимое, матч и участник будут проверены.</p>
         <label>Файл реплея <input type="file" accept=".dem,.bz2,.zst" disabled={busy||active} onChange={e=>setFile(e.target.files?.[0]??null)}/></label>
         <button disabled={!file||busy||active} onClick={importFile}>Импортировать</button>

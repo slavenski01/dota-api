@@ -10,6 +10,7 @@ export function noAnchors(context: AnalysisContext, ruleId: "D01" | "D02" | "I01
   const output = result(ruleId, null, window, config, [{ field, mode: "complete_window", participantSlots: PLAYER_SLOTS, window }]);
   const covered = completeWindow(context, field, window), time = completeWindow(context, "time", window);
   output.status = covered.usable && time.usable ? "no_signal" : "skipped";
+  output.dataComplete = output.status === "no_signal";
   output.reasons = output.status === "no_signal" ? [] : [`${field}_anchors_or_coverage_missing`, ...covered.reasons, ...time.reasons];
   output.evidenceIds = unique([...covered.evidenceIds, ...time.evidenceIds]);
   return output;
@@ -30,6 +31,7 @@ export function evaluateD01(context: AnalysisContext): RuleResult[] {
     }
     const enemies = context.events.filter(e => e.data.type === "death" && teamOf(e.data.victimSlot) !== context.player.team && within(e, window));
     output.status = enemies.length ? "no_signal" : "signal";
+    output.dataComplete = true;
     output.evidenceIds = unique([anchor.id, ...covered.evidenceIds, ...time.evidenceIds]);
     output.eventIds = enemies.map(e => e.id);
     output.facts = enemies.length ? [`В окне зарегистрировано смертей героев противника: ${enemies.length}.`] : ["В ближайшем окне не зарегистрированы смерти героев противника."];
@@ -63,6 +65,7 @@ export function evaluateD02(context: AnalysisContext): RuleResult[] {
       output.reasons = unique(["objective_loss_not_established", ...(ambiguous ? ["objective_side_or_event_unverified"] : []), ...covered.reasons, ...time.reasons]); return output;
     }
     output.status = losses.length ? "signal" : "no_signal";
+    output.dataComplete = covered.usable && time.usable && !ambiguous;
     output.eventIds = losses.map(e => e.id);
     output.evidenceIds = unique([anchor.id, ...losses.map(e => e.id), ...(!losses.length ? [...covered.evidenceIds, ...time.evidenceIds] : [])]);
     output.facts = losses.length ? ["Смерть игрока и подтверждённая потеря объекта близки по времени."] : ["В полном окне не зарегистрированы подходящие потери объектов."];
