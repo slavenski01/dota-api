@@ -308,12 +308,12 @@ private fun ObjectNode.putNumber(name: String, value: Number?) {
 internal class ReplayRecords(private val matchId: String, private val replaySha256: String) {
     private val acquiredAt = Instant.now().truncatedTo(ChronoUnit.MILLIS).toString()
     // Dataset IDs identify the extraction semantics, not a mutable wall-clock run.
-    fun id(suffix: String) = "normalized-v1-$replaySha256-$suffix"
+    fun id(suffix: String) = "normalized-v2-$replaySha256-$suffix"
     fun base(kind: String, suffix: String): ObjectNode = ContractValidator.mapper.createObjectNode().apply {
         put("schemaVersion", ContractValidator.SCHEMA_VERSION); put("kind", kind); put("id", id(suffix)); put("matchId", matchId)
         putObject("provenance").apply {
             put("source", "replay"); put("acquiredAt", acquiredAt); put("artifactId", "replay-sha256-$replaySha256")
-            put("sourceVersion", "normalized-v1/clarity-5.0.1/protobuf-7.1"); putArray("inputIds")
+            put("sourceVersion", "normalized-v2/clarity-5.0.1/protobuf-7.1"); putArray("inputIds")
         }
     }
     fun coverage(suffix: String, field: String, slots: List<Int>, start: Double, end: Double, status: String,

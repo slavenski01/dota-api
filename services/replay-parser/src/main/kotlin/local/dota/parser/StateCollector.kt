@@ -31,7 +31,7 @@ class StateCollector {
     private data class Item(val id: String, val slot: Int, val charges: Int?)
     private data class Resource(val id: String, val kind: String)
     private data class Sample(val time: Double, val tick: Int, val slot: Int, val hp: Double?, val mana: Double?, val alive: Boolean?,
-        val items: List<Item>?, val resources: List<Resource>?)
+        val items: List<Item>?, val resources: List<Resource>?, val position: Map<String, Any?>?)
     private val samples = mutableListOf<Sample>()
     @OnEntityCreated(classPattern = "CDOTAGamerulesProxy|CDOTA_PlayerResource")
     fun entity(entity: Entity) { entities[entity.dtClass.dtName] = entity }
@@ -86,7 +86,11 @@ class StateCollector {
                 hero.numState("m_iHealth")?.toDouble()?.takeIf { it.isFinite() && it >= 0 },
                 hero.numState("m_flMana")?.toDouble()?.takeIf { it.isFinite() && it >= 0 },
                 lifeObservation(hero.numState("m_lifeState")?.toInt()), if (allItems) items else null,
-                if (allItems && allAbilities) resources else null)
+                if (allItems && allAbilities) resources else null,
+                worldPosition(hero.numState("CBodyComponent.m_hParent"),
+                    hero.numState("CBodyComponent.m_cellX"), hero.numState("CBodyComponent.m_vecX"),
+                    hero.numState("CBodyComponent.m_cellY"), hero.numState("CBodyComponent.m_vecY"),
+                    hero.numState("CBodyComponent.m_cellZ"), hero.numState("CBodyComponent.m_vecZ")))
         }
     }
     fun records(basic: List<ObjectNode>): List<ObjectNode> {
@@ -114,7 +118,7 @@ class StateCollector {
                 put("playerSlot", sample.slot); put("gameTimeSeconds", time); put("tick", sample.tick)
                 putObject("perspective").put("mode", "omniscient")
                 set<ObjectNode>("visibility", unknown("Team visibility has not been verified."))
-                set<ObjectNode>("position", unknown("World coordinate origin and patch calibration remain unverified; raw candidates are research-only."))
+                set<ObjectNode>("position", observation(sample.position, "World origin unavailable: missing network coordinates or an unresolved parent transform."))
                 set<ObjectNode>("hp", observation(sample.hp, "Health field unavailable."))
                 set<ObjectNode>("mana", observation(sample.mana, "Mana field unavailable."))
                 set<ObjectNode>("alive", observation(sample.alive, "Unknown lifeState value."))

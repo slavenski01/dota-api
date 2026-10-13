@@ -43,7 +43,11 @@ test('real replay normalization is committed atomically with provenance and dist
   const exact=await stateAt(pool,result.datasetId,first.playerSlot,first.gameTimeSeconds,0);assert.equal(exact.ageSeconds,0);
   const death=rows.find(r=>r.kind==='event'&&r.data.type==='death'&&r.gameTimeSeconds>10);
   const window=await readStateWindow(pool,storage,result.datasetId,death.gameTimeSeconds-5,death.gameTimeSeconds+5,'omniscient');
-  assert.ok(window.length>50);assert.ok(window.every(r=>r.position.status==='unknown'));
+  assert.ok(window.length>50);assert.ok(window.some(r=>r.position.status==='known'));
+  for(const r of window.filter(r=>r.position.status==='known')){
+   assert.equal(r.position.observedAtSeconds,r.gameTimeSeconds);assert.equal(r.position.value.coordinateSystem,'world');
+   assert.equal(r.position.value.mapVersion,null);assert.match(r.provenance.sourceVersion,/^normalized-v2\//);
+  }
   assert.ok(window.some(r=>r.hp.status==='known'&&r.mana.status==='known'));
   assert.ok(window.every(r=>r.resources.status!=='known'||r.resources.value.every(v=>v.canUse.status==='unknown')));
   assert.deepEqual(await readStateWindow(pool,storage,result.datasetId,0,10,'radiant'),[]);

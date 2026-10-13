@@ -21,7 +21,7 @@ internal val contextFields = listOf("position", "hp", "mana", "alive", "inventor
 internal fun visibilityBit(word: Long?, entityIndex: Int): Boolean? =
     if (word == null || entityIndex !in 0 until 16384) null else (word ushr (entityIndex % 64)) and 1L != 0L
 
-/** Coordinate hypothesis is retained alongside original network cells; client calibration is still pending. */
+/** Research retains raw cells; production worldPosition additionally checks the entity parent. */
 internal fun coordinateCandidate(cell: Number?, offset: Number?): Double? {
     val c = cell?.toDouble() ?: return null
     val v = offset?.toDouble() ?: return null

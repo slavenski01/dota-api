@@ -39,7 +39,8 @@ export function validateDataset(input: unknown[], evidence: DatasetEvidence): Da
     report.issues.push({ code, field, recordIds: ids });
     if (field === null) report.complete = false;
   };
-  if (!evidence.inputVerified || !evidence.parserCompleted || evidence.parserVersion !== "normalized-v1/clarity-5.0.1" || !/^[a-f0-9]{64}$/.test(evidence.inputSha256)) issue("unverified_parser_completion", null, []);
+  const supportedParser = ["normalized-v1/clarity-5.0.1", "normalized-v2/clarity-5.0.1"].includes(evidence.parserVersion);
+  if (!evidence.inputVerified || !evidence.parserCompleted || !supportedParser || !/^[a-f0-9]{64}$/.test(evidence.inputSha256)) issue("unverified_parser_completion", null, []);
   const byId = new Map<string, ContractRecord>();
   const participants = records.filter(r => r.kind === "participant");
   const slots = participants.map(r => r.playerSlot);
@@ -49,7 +50,7 @@ export function validateDataset(input: unknown[], evidence: DatasetEvidence): Da
     if (byId.has(record.id)) issue("duplicate_record_id", null, [record.id]);
     byId.set(record.id, record);
     if (record.matchId !== evidence.matchId || record.provenance.artifactId !== evidence.artifactId || record.provenance.source !== "replay" ||
-      record.provenance.sourceVersion !== "normalized-v1/clarity-5.0.1/protobuf-7.1") issue("source_conflict", null, [record.id]);
+      record.provenance.sourceVersion !== `${evidence.parserVersion}/protobuf-7.1`) issue("source_conflict", null, [record.id]);
     if (slotsOf(record).some(slot => !slots.includes(slot as PlayerSlot))) issue("participant_not_found", null, [record.id]);
     if ("datasetId" in record && record.datasetId !== evidence.datasetId) issue("dataset_reference_mismatch", null, [record.id]);
     if ("gameTimeSeconds" in record && matches[0]?.durationSeconds != null && record.gameTimeSeconds > matches[0].durationSeconds) issue("postgame_record", eventField(record), [record.id]);

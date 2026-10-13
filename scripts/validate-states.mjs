@@ -16,14 +16,19 @@ for(const [i,sample] of manifest.records.entries()){
  const rows=[];for await(const m of readMessages((async function*(){yield run.stdout;})()))if(m.type==='record')rows.push(m.record);
  const states=rows.filter(r=>r.kind==='hero_state');assert.ok(states.length>100);assert.ok(states.some(r=>r.gameTimeSeconds<0));
  const raw=JSON.parse(readFileSync(`data/context-validation/2026-10-12-e01-t04/run/${label}-first.json`));
- const index=new Map(raw.samples.map(r=>[`${r.playerSlot}:${r.tick}`,r]));let compared=0;
+ const index=new Map(raw.samples.map(r=>[`${r.playerSlot}:${r.tick}`,r]));let compared=0,positionsCompared=0;
  for(const state of states){
   const r=index.get(`${state.playerSlot}:${state.tick}`);if(!r)continue;
   for(const field of ['hp','mana','alive'])if(state[field].status==='known'){assert.equal(state[field].value,r[field]);compared++;}
-  assert.equal(state.position.status,'unknown');
+  if(state.position.status==='known'){
+   for(const axis of ['x','y','z']){assert.equal(state.position.value[axis],r.position[axis]);positionsCompared++;}
+   assert.equal(state.position.observedAtSeconds,state.gameTimeSeconds);
+  }
   if(state.inventory.status==='known')assert.equal(state.inventory.value.length,r.inventory.entries.length);
  }
  assert.ok(compared>0,'No matching control ticks');
+ assert.ok(positionsCompared>0,'No known positions at control ticks');
+ const knownPositions=states.filter(s=>s.position.status==='known').length;assert.ok(knownPositions>states.length*0.9);
  let deathChecks=0;
  for(const death of rows.filter(r=>r.kind==='event'&&r.data.type==='death')){
   const observation=states.find(s=>s.playerSlot===death.data.victimSlot&&s.gameTimeSeconds>=death.gameTimeSeconds&&s.gameTimeSeconds-death.gameTimeSeconds<=1.1);
@@ -31,6 +36,6 @@ for(const [i,sample] of manifest.records.entries()){
   assert.equal(observation.alive.status,'known');assert.equal(observation.alive.value,false);deathChecks++;
  }
  assert.equal(new Set(states.map(r=>`${r.playerSlot}:${r.gameTimeSeconds}`)).size,states.length);
- const result={sample:label,states:states.length,controlValuesCompared:compared,deathChecks,bytes:run.stdout.length,seconds:(performance.now()-started)/1000};results.push(result);console.log(result);
+ const result={sample:label,states:states.length,knownPositions,positionsCompared,controlValuesCompared:compared,deathChecks,bytes:run.stdout.length,seconds:(performance.now()-started)/1000};results.push(result);console.log(result);
  writeFileSync(resolve(out,'summary.json'),JSON.stringify(results,null,2)+'\n');
 }

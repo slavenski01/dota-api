@@ -36,6 +36,13 @@ test('scope mismatches, wrong participant counters, duplicate deaths and false s
  ]){const rows=fixture();mutate(rows);assert.equal(usable(validateDataset(rows,evidence)).usable,false);}
  const rows=fixture();rows.find(r=>r.id==='player-0').statistics.gpm=null;assert.equal(usable(validateDataset(rows,evidence),'statistics',0,20,20).usable,false);
 });
+test('parser v2 is accepted only with matching record provenance and keeps spatial coverage unknown',()=>{
+ const rows=fixture();for(const row of rows)row.provenance={...row.provenance,sourceVersion:'normalized-v2/clarity-5.0.1/protobuf-7.1'};
+ const v2={...evidence,parserVersion:'normalized-v2/clarity-5.0.1'};
+ const report=validateDataset(rows,v2);assert.equal(report.complete,true);assert.equal(usable(report,'positions').usable,false);
+ assert.equal(validateDataset(rows,evidence).complete,false);
+ rows[0].provenance.sourceVersion=provenance.sourceVersion;assert.equal(validateDataset(rows,v2).complete,false);
+});
 test('overlapping unknown coverage vetoes a positive claim and invalid queries reject',()=>{
  const rows=fixture();rows.push({...structuredClone(rows.find(r=>r.id==='deaths-0')),id:'conflict',status:'unknown',reason:'source disagreement'});
  const report=validateDataset(rows,evidence);assert.equal(usable(report).usable,false);
