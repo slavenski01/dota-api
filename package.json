@@ -26,7 +26,8 @@
     "smoke": "node --test scripts/smoke.test.mjs",
     "test:contracts": "node --test scripts/contracts.test.mjs",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
-    "test:persistence": "node scripts/test-postgres.mjs scripts/persistence.test.mjs"
+    "test:persistence": "node scripts/test-postgres.mjs scripts/persistence.test.mjs",
+    "test:storage": "node scripts/test-postgres.mjs scripts/storage.test.mjs"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

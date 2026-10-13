@@ -15,8 +15,9 @@ before(async () => { await migrate(pool); });
 after(async () => { await pool.end(); });
 
 test("empty database migrations are serialized, repeatable, checksummed and atomic", async () => {
+  const count = (await pool.query("SELECT count(*) FROM public.dota_migrations")).rows[0].count;
   await Promise.all([migrate(pool), migrate(pool)]);
-  assert.equal((await pool.query("SELECT count(*) FROM public.dota_migrations")).rows[0].count, "1");
+  assert.equal((await pool.query("SELECT count(*) FROM public.dota_migrations")).rows[0].count, count);
   const dir = await mkdtemp("/tmp/dota-migrations-");
   try {
     await writeFile(`${dir}/001_data.sql`, "SELECT 1;");
