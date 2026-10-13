@@ -84,6 +84,7 @@ class BasicCollector(private val expectedInfo: Demo.CDemoFileInfo) {
     private val entities = mutableMapOf<String, Entity>()
     private var finalEntities: Map<String, Entity>? = null
     private val deaths = mutableListOf<Death>()
+    private val extraEvents = EventCollector()
     private var infoSeen = false
     private var stopSeen = false
     private var serverTick: Int? = null
@@ -168,6 +169,7 @@ class BasicCollector(private val expectedInfo: Demo.CDemoFileInfo) {
 
     @OnCombatLogEntry
     fun onCombat(entry: CombatLogEntry) {
+        extraEvents.accept(entry)
         if (!entry.hasType()) return
         when (entry.type.name) {
             "DOTA_COMBATLOG_GAME_STATE" -> if (entry.hasTimestamp() && entry.hasValue()) {
@@ -268,6 +270,7 @@ class BasicCollector(private val expectedInfo: Demo.CDemoFileInfo) {
             }
         }
         records += eventRows
+        records += extraEvents.records(factory, heroSlots, minTime - step * 2, startTime, endTime)
         for (participant in participantRows) {
             val slot = participant["playerSlot"].asInt()
             val events = eventRows.filter { it["data"]["victimSlot"].asInt() == slot }
@@ -299,15 +302,15 @@ private fun ObjectNode.putNumber(name: String, value: Number?) {
     if (number == null || !number.isFinite() || number < 0) putNull(name) else put(name, floor(number).toLong())
 }
 
-private class ReplayRecords(private val matchId: String, private val replaySha256: String) {
+internal class ReplayRecords(private val matchId: String, private val replaySha256: String) {
     private val acquiredAt = Instant.now().truncatedTo(ChronoUnit.MILLIS).toString()
     // Dataset IDs identify the extraction semantics, not a mutable wall-clock run.
-    fun id(suffix: String) = "basic-v1-$replaySha256-$suffix"
+    fun id(suffix: String) = "normalized-v1-$replaySha256-$suffix"
     fun base(kind: String, suffix: String): ObjectNode = ContractValidator.mapper.createObjectNode().apply {
         put("schemaVersion", ContractValidator.SCHEMA_VERSION); put("kind", kind); put("id", id(suffix)); put("matchId", matchId)
         putObject("provenance").apply {
             put("source", "replay"); put("acquiredAt", acquiredAt); put("artifactId", "replay-sha256-$replaySha256")
-            put("sourceVersion", "basic-v1/clarity-5.0.1/protobuf-7.1"); putArray("inputIds")
+            put("sourceVersion", "normalized-v1/clarity-5.0.1/protobuf-7.1"); putArray("inputIds")
         }
     }
     fun coverage(suffix: String, field: String, slots: List<Int>, start: Double, end: Double, status: String,

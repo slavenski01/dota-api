@@ -7,6 +7,16 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class ReplaySemanticsTest {
+    @Test fun `stable resource catalog and named objectives do not confuse ownership`() {
+        assertEquals("1", ResourceIds.resolve("item", "item_blink"))
+        assertEquals(null, ResourceIds.resolve("item", "unknown_item"))
+        assertEquals("tower", objectiveType("npc_dota_goodguys_tower1_mid"))
+        assertEquals("ancient", objectiveType("npc_dota_badguys_fort"))
+        assertEquals(null, objectiveType("npc_dota_hero_razor"))
+    }
+    @Test fun `repeated deaths of same hero after buyback are retained`() {
+        assertEquals(2, matchDeaths(listOf(Death(10.0,"hero"), Death(20.0,"hero")), 0.0, 30.0).size)
+    }
     @Test fun `server clock freezes during pause and resumes without a jump`() {
         val start = 100.0
         assertEquals(-10.0, replayTime(2700, 1.0 / 30, false, 0, 0) - start)

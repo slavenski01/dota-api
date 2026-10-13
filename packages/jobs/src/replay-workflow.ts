@@ -1,3 +1,4 @@
+import { normalizationHandler } from "./normalization.js";
 import { artifactById, registerArtifact, REPLAY_MEDIA_TYPE, resolveReplay, verifiedReplay, SourceError, type Pool, type Storage, type SourceFetch } from "@dota/persistence";
 import { downloadReplay, importReplay, type ImportedReplay, type ReplayProgress } from "./replay.js";
 import { type StageHandlers, type StageResult } from "./workflow.js";
@@ -44,7 +45,7 @@ export function replayHandlers(pool: Pool, storage: Storage, fetcher?: SourceFet
       return { artifactId: imported.artifactId, inputSha256: imported.file.sha256,
         commit: client => registerArtifact(client, { id: imported.artifactId, matchId: row.match_id, file: imported.file, mediaType: REPLAY_MEDIA_TYPE, source: imported.source }) };
     },
-    parsing: async () => ({ unavailable: "analysis_not_connected", limitations: ["Реплей проверен и сохранён. Расширенные данные и анализ будут доступны после подключения E05–E08."] }),
+    parsing: normalizationHandler(pool, storage),
     validating: async () => ({ unavailable: "analysis_not_connected" }),
     analysing: async () => ({ unavailable: "analysis_not_connected" }),
   };

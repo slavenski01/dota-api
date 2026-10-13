@@ -29,7 +29,7 @@ export async function defaultVersions(): Promise<PipelineVersions> {
   const root = new URL("../../../.agents/skills/dota-match-analysis/", import.meta.url);
   const names = ["SKILL.md", ...(await readdir(new URL("references/", root))).filter(name=>name.endsWith(".md")).sort().map(name=>`references/${name}`)];
   const skill = await Promise.all(names.map(async name=>`${name}\n${await readFile(new URL(name,root),"utf8")}`));
-  return { parser: "0.0.0", normalization: "0.1.0", rules: "not-connected", skillSha256: hash(skill.join("\n")), model: null, contextSha256: null, configSha256: hash("e04-replay-import-v1") };
+  return { parser: "normalized-v1/clarity-5.0.1", normalization: "e05-v1", rules: "not-connected", skillSha256: hash(skill.join("\n")), model: null, contextSha256: null, configSha256: hash("e05-normalization-v1") };
 }
 function validateVersions(versions: PipelineVersions): void {
   if (![versions.parser,versions.normalization,versions.rules].every(value=>typeof value==="string" && value.length>0 && value.length<=128)

@@ -79,9 +79,11 @@ export async function insertReview(client: PoolClient, datasetId: string, episod
   await client.query("INSERT INTO dota.episode_reviews(dataset_id,episode_id,version,payload) VALUES ($1,$2,$3,$4)", [datasetId, episodeId, episode.review.version, episode.review]);
 }
 export async function saveDataset(pool: Pool, dataset: DatasetInput, input: unknown[]): Promise<void> {
+  return transaction(pool, client => saveDatasetInTransaction(client, dataset, input));
+}
+export async function saveDatasetInTransaction(client: PoolClient, dataset: DatasetInput, input: unknown[]): Promise<void> {
   const records = input.map(validateRecord);
   if (records.some(record => record.matchId !== dataset.matchId)) throw new Error("dataset_match_mismatch");
-  await transaction(pool, async client => {
     const match = records.find(record => record.kind === "match");
     await client.query("INSERT INTO dota.matches(match_id,started_at) VALUES ($1,$2) ON CONFLICT (match_id) DO UPDATE SET started_at=coalesce(dota.matches.started_at,excluded.started_at)", [dataset.matchId, match?.kind === "match" ? match.startedAt : null]);
     for (const record of records) if (record.kind === "participant") {
@@ -92,7 +94,6 @@ export async function saveDataset(pool: Pool, dataset: DatasetInput, input: unkn
     await client.query("INSERT INTO dota.datasets(id,match_id,parser_run_id,normalization_version,input_sha256,versions) VALUES ($1,$2,$3,$4,$5,$6)",
       [dataset.id, dataset.matchId, dataset.parserRunId, dataset.normalizationVersion, dataset.inputSha256, dataset.versions]);
     await insertRecords(client, dataset.id, records);
-  });
 }
 export { SourceError, normalizePlayerId, openDota, parseProfile, selectProfile, selectedProfile } from "./profiles.js";
 export type { PlayerProfile, SourceFetch } from "./profiles.js";

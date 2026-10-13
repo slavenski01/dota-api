@@ -22,7 +22,7 @@ const base = dirname(manifestPath);
 const parser = resolve(root, 'services/replay-parser/build/install/replay-parser/bin/replay-parser');
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const benchmark = process.platform === 'darwin';
-const summary = { parser: 'basic-v1/clarity-5.0.1/protobuf-7.1', samples: [], failures: [] };
+const summary = { parser: 'normalized-v1/clarity-5.0.1/protobuf-7.1', samples: [], failures: [] };
 const statNames = { kills: 'kills', deaths: 'deaths', assists: 'assists', lastHits: 'last_hits', denies: 'denies', gpm: 'gold_per_min', xpm: 'xp_per_min', heroDamage: 'hero_damage', towerDamage: 'tower_damage' };
 async function run(file, matchId, label) {
   const request = { protocolVersion: '1.0.0', schemaVersion: '0.1.0', type: 'parse', requestId: 'validation', replayPath: file, expectedMatchId: String(matchId) };
