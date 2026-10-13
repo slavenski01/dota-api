@@ -58,7 +58,7 @@ test("built workspace packages resolve through npm workspaces", async () => {
   await import("@dota/analysis");
 });
 
-test("worker starts without credentials, rejects unsupported arguments and stops on SIGTERM", async () => {
+test("worker checks configuration without credentials and rejects unsupported arguments", async () => {
   const entry = resolve(root, "apps/worker/dist/index.js");
   const checked = run(process.execPath, [entry, "--check"]);
   assert.equal(checked.status, 0, checked.stderr);
@@ -66,14 +66,9 @@ test("worker starts without credentials, rejects unsupported arguments and stops
   const invalid = run(process.execPath, [entry, "--unknown"]);
   assert.equal(invalid.status, 2);
   assert.match(invalid.stderr, /Usage/);
-  const running = launch(process.execPath, [entry]);
-  try {
-    await waitFor(() => running.output().includes('"worker.started"'), running);
-  } finally {
-    const result = await stop(running);
-    assert.equal(result.code, 0, running.output());
-  }
-  assert.match(running.output(), /worker.stopped/);
+  const missing = spawnSync(process.execPath, [entry], { cwd: root, env: { ...process.env, DATABASE_URL: "" }, encoding: "utf8" });
+  assert.equal(missing.status, 1);
+  assert.match(missing.stdout, /DATABASE_URL_required/);
 });
 
 test("installed Kotlin CLI advertises parsing and rejects unsupported positional arguments", () => {

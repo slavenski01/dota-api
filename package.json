@@ -13,21 +13,22 @@
     "packages/*"
   ],
   "scripts": {
-    "build:packages": "npm run build --workspace=@dota/contracts && npm run build --workspace=@dota/analysis && npm run build --workspace=@dota/persistence",
+    "build:packages": "npm run build --workspace=@dota/contracts && npm run build --workspace=@dota/analysis && npm run build --workspace=@dota/persistence && npm run build --workspace=@dota/jobs",
     "build:ts": "npm run build:packages && npm run build --workspace=@dota/worker && npm run build --workspace=@dota/web",
     "build:parser": "./services/replay-parser/gradlew --project-dir services/replay-parser --no-daemon build installDist",
     "build": "npm run build:ts && npm run build:parser",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "dev:web": "npm run dev --workspace=@dota/web --",
-    "dev:worker": "npm run dev --workspace=@dota/worker --",
+    "dev:worker": "node --env-file-if-exists=.env --watch --max-old-space-size=256 apps/worker/src/index.ts",
     "start:web": "npm run start --workspace=@dota/web --",
-    "start:worker": "npm run start --workspace=@dota/worker --",
+    "start:worker": "node --env-file-if-exists=.env --max-old-space-size=256 apps/worker/dist/index.js",
     "start:parser": "./services/replay-parser/build/install/replay-parser/bin/replay-parser",
     "smoke": "node --test scripts/smoke.test.mjs",
     "test:contracts": "node --test scripts/contracts.test.mjs",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
     "test:persistence": "node scripts/test-postgres.mjs scripts/persistence.test.mjs",
-    "test:storage": "node scripts/test-postgres.mjs scripts/storage.test.mjs"
+    "test:storage": "node scripts/test-postgres.mjs scripts/storage.test.mjs",
+    "test:jobs": "node scripts/test-postgres.mjs scripts/jobs.test.mjs"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

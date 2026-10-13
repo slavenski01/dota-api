@@ -1,24 +1,39 @@
+import { openDatabase, migrate, LocalStorage, artifactById } from "@dota/persistence";
+import { startQueue, consume, JobError } from "@dota/jobs";
+
 const args = process.argv.slice(2);
-
+const log = (event: string, details: Record<string, unknown> = {}): void => {
+  console.log(JSON.stringify({ service: "worker", event, mode: "infrastructure", ...details }));
+};
 if (args.length > 1 || (args.length === 1 && args[0] !== "--check")) {
-  console.error("Usage: worker [--check]");
-  process.exitCode = 2;
+  console.error("Usage: worker [--check]"); process.exitCode = 2;
+} else if (args[0] === "--check") {
+  log("worker.check", { queueConnected: false, databaseConfigured: Boolean(process.env.DATABASE_URL) });
+} else if (!process.env.DATABASE_URL) {
+  log("worker.configuration_error", { code: "DATABASE_URL_required" }); process.exitCode = 1;
 } else {
-  const log = (event: string, details: Record<string, unknown> = {}): void => {
-    console.log(JSON.stringify({ service: "worker", event, mode: "scaffold", ...details }));
-  };
-
-  if (args[0] === "--check") {
-    log("worker.check", { queueConnected: false });
-  } else {
-    // Keeps the scaffold alive until queue consumption is implemented in E02.
-    const keepAlive = setInterval(() => {}, 60_000);
-    const stop = (signal: NodeJS.Signals): void => {
-      clearInterval(keepAlive);
-      log("worker.stopped", { signal });
-    };
-    process.once("SIGINT", stop);
-    process.once("SIGTERM", stop);
-    log("worker.started", { queueConnected: false });
-  }
+  const pool = openDatabase();
+  let boss: Awaited<ReturnType<typeof startQueue>> | undefined;
+  try {
+    await migrate(pool);
+    const storage = new LocalStorage(process.env.STORAGE_ROOT ?? "./data/storage");
+    await storage.cleanupTemporary();
+    boss = await startQueue(process.env.DATABASE_URL);
+    const stopConsumer = await consume<{ kind: string; artifactId: string }>(boss, pool, async ({ job, signal }) => {
+      log("job.started", { job_id: job.id });
+      if (job.data.kind !== "verify_artifact") throw new JobError("handler_not_available");
+      const file = await artifactById(pool, job.data.artifactId);
+      signal.throwIfAborted(); await storage.verify(file); signal.throwIfAborted();
+      log("job.completed", { job_id: job.id, match_id: file.matchId });
+      return { verified: true };
+    });
+    log("worker.started", { queueConnected: true });
+    await new Promise<void>(accept => {
+      const stop = () => { process.off("SIGTERM", stop); process.off("SIGINT", stop); accept(); };
+      process.once("SIGTERM", stop); process.once("SIGINT", stop);
+    });
+    await stopConsumer();
+    log("worker.stopped");
+  } catch { log("worker.failed", { code: "worker_infrastructure_failed" }); process.exitCode = 1; }
+  finally { await boss?.stop(); await pool.end(); }
 }
