@@ -15,8 +15,8 @@ function parseReview(input: unknown, team: string): ReviewInput {
   const value = input as Record<string, unknown>;
   if (Object.keys(value).some(k => !["expectedVersion","status","explanation","alternative","author","material","perspective"].includes(k)) ||
       !Number.isSafeInteger(value.expectedVersion) || (value.expectedVersion as number) < 0 || (value.expectedVersion as number) >= 2147483647 ||
-      !["unreviewed","confirmed_error","justified","uncertain"].includes(String(value.status)) ||
-      !["timeline","map","dota_client"].includes(String(value.material))) throw new JobError("invalid_review");
+      typeof value.status !== "string" || !["unreviewed","confirmed_error","justified","uncertain"].includes(value.status) ||
+      typeof value.material !== "string" || !["timeline","map","dota_client"].includes(value.material)) throw new JobError("invalid_review");
   const text = (v: unknown, max: number) => { if (typeof v !== "string" || !v.trim() || v.trim().length > max) throw new JobError("invalid_review"); return v.trim(); };
   const perspective = value.perspective as Review["perspective"] | undefined;
   if (!perspective || typeof perspective !== "object" || Array.isArray(perspective) ||

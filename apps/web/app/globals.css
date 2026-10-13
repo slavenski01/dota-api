@@ -59,8 +59,10 @@ td:nth-child(6) { min-width: 220px; }
 .stat-grid dt { color: #bac5bf; font-size: 13px; }
 .stat-grid dd { margin: 8px 0 0; overflow-wrap: anywhere; }
 .metric-chart { margin: 28px 0; }
-.metric-chart svg { width: 100%; height: auto; color: #bac5bf; }
-.metric-chart text { fill: currentColor; font-size: 13px; }
+.metric-chart svg { width: 100%; min-width: 640px; height: auto; color: #bac5bf; }
+.metric-chart text { fill: currentColor; font-size: 16px; }
+.chart-canvas { overflow-x: auto; }
+.chart-canvas:focus-visible { outline: 2px solid #f1f4e9; outline-offset: 3px; }
 .chart-table { overflow: auto; max-height: 320px; }
 .match-overview { line-height: 1.6; }
 .episode-page { max-width: 1200px; line-height: 1.6; }

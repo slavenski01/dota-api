@@ -44,6 +44,11 @@ test('production replay HTTP: dedup, missing source, persistent summary, manual 
   try{manifest=JSON.parse(await readFile(manifestPath,'utf8'));}catch(error){if(error.code!=='ENOENT')throw error;t.diagnostic('Local E01 evidence unavailable; real upload subcase skipped');}
   if(manifest){
    const sample=manifest.records[0],matchId=String(sample.matchId),accountId=String(manifest.accountId),path=resolve(dirname(manifestPath),sample.replayFile);
+   const source=JSON.parse(await readFile(resolve(dirname(manifestPath),`match-${matchId}.json`),'utf8'));
+   const sourcePlayer=source.players.find(p=>String(p.account_id)===accountId);assert.ok(sourcePlayer);
+   await selectProfile(pool,accountId,'account',async()=>Response.json({profile:{account_id:Number(accountId),personaname:'Local verification'}}));
+   await transaction(pool,c=>saveHistoryPage(c,accountId,0,parseHistory([{...source,...sourcePlayer}])));
+   assert.equal((await fetch(`${base}/api/matches?accountId=${accountId}`)).status,200);
    const result=await upload(matchId,accountId,createReadStream(path));assert.equal(result.status,202);const {id}=await result.json();
    const done=await finished(id);assert.equal(done.job.status,'ready');assert.equal(done.job.error,null);assert.ok(done.analysisId);assert.ok(done.artifactId);assert.equal(done.accountId,accountId);assert.equal(done.progress.phase,'stored');
    assert.equal(done.job.dataLevel,'replay_context');assert.ok(done.datasetId);
@@ -53,6 +58,33 @@ test('production replay HTTP: dedup, missing source, persistent summary, manual 
    for(const candidate of analysis.episodes){const detail=await fetch(`${base}/api/datasets/${done.datasetId}/episodes/${candidate.episode.id}?accountId=${accountId}`);assert.equal(detail.status,200);const data=await detail.json();assert.equal(data.evidence.length,candidate.episode.evidenceIds.length);}
    assert.equal((await fetch(analysisUrl.replace(accountId,'4294967294'))).status,404);
    assert.equal((await fetch(analysisUrl+'&mode=decision')).status,400);
+   const overviewUrl=`${base}/api/datasets/${done.datasetId}/overview?accountId=${accountId}`;
+   const overviewResponse=await fetch(overviewUrl);assert.equal(overviewResponse.status,200);
+   const overview=await overviewResponse.json();assert.equal(overview.player.accountId,accountId);assert.ok(overview.series.length);assert.ok(overview.series.some(p=>p.hp!==null));
+   assert.equal((await fetch(overviewUrl+'&mode=decision')).status,400);
+   assert.equal((await fetch(overviewUrl.replace(accountId,'4294967294'))).status,404);
+   assert.ok(analysis.episodes.length,'real replay should expose a reviewable episode');
+   const episode=analysis.episodes[0].episode,ep=`${base}/api/datasets/${done.datasetId}/episodes/${episode.id}`;
+   const frameQuery=`accountId=${accountId}&time=${episode.decisionTimeSeconds}`;
+   const ownFrame=await(await fetch(`${ep}/view?${frameQuery}`)).json();assert.equal(ownFrame.mode,'decision');assert.equal(ownFrame.events.length,0);assert.equal(ownFrame.facts.length,0);assert.ok(ownFrame.states.every(s=>s.state.hp.status==='unknown'));
+   const allFrame=await(await fetch(`${ep}/view?${frameQuery}&mode=retrospective`)).json();assert.equal(allFrame.mode,'retrospective');assert.ok(allFrame.events.length);assert.ok(allFrame.states.some(s=>s.state?.hp.status==='known'));assert.ok(allFrame.states.every(s=>s.state===null||s.state.gameTimeSeconds<=episode.decisionTimeSeconds&&s.ageSeconds<=5));
+   assert.equal((await fetch(`${ep}/view?accountId=${accountId}&time=${episode.window.endSeconds+1}`)).status,400);
+   assert.equal((await fetch(`${ep}/view?${frameQuery}&mode=bad`)).status,400);
+   assert.equal((await fetch(`${ep}/view?${frameQuery}&time=NaN`)).status,400);
+   assert.equal((await fetch(`${ep}/view?accountId=4294967294`)).status,404);
+   const reviewUrl=`${ep}/reviews?accountId=${accountId}`;
+   assert.equal((await(await fetch(reviewUrl)).json()).current,null);
+   const reviewInput={expectedVersion:0,status:'uncertain',explanation:'Integration test: map and visibility remain unverified',alternative:null,author:'Integration test',material:'timeline',perspective:{mode:'omniscient'}};
+   const postReview=(body,origin=base)=>fetch(reviewUrl,{method:'POST',headers:{'Content-Type':'application/json',Origin:origin},body:JSON.stringify(body)});
+   assert.equal((await postReview(reviewInput,'https://untrusted.example')).status,403);
+   assert.equal((await postReview({...reviewInput,status:'confirmed_error'})).status,400);
+   const savedReview=await postReview(reviewInput);assert.equal(savedReview.status,200);assert.equal((await savedReview.json()).current.version,1);
+   assert.equal((await postReview(reviewInput)).status,200);
+   assert.equal((await postReview({...reviewInput,explanation:'stale edit'})).status,409);
+   const reopened=await(await fetch(reviewUrl)).json();assert.equal(reopened.reviews.length,1);assert.equal(reopened.current.status,'uncertain');
+   assert.equal((await fetch(reviewUrl.replace(accountId,'4294967294'))).status,404);
+   const episodePath=`/matches/${matchId}/episodes/${episode.id}?datasetId=${done.datasetId}&accountId=${accountId}&mode=retrospective&time=${episode.decisionTimeSeconds}`;
+   assert.equal((await fetch(base+episodePath)).status,200);
    const contextUrl=`${base}/api/datasets/${done.datasetId}/context?time=60&playerSlot=0`;
    const contextResponse=await fetch(contextUrl);assert.equal(contextResponse.status,200);
    const context=await contextResponse.json();assert.equal(context.mode,'decision');assert.equal(context.states.length,10);assert.ok(context.states.every(s=>s.hp.status==='unknown'&&s.visibility.status==='unknown'));
@@ -68,6 +100,10 @@ test('production replay HTTP: dedup, missing source, persistent summary, manual 
    const revised=await(await fetch(`${base}/api/datasets/${retried.datasetId}/analysis?accountId=${accountId}&analysisId=${retried.analysisId}`)).json();assert.deepEqual(revised.options,analysisOptions);if(analysis.purchases.length)assert.ok(revised.results.some(r=>r.ruleId==='I01'&&r.status==='signal'));
    assert.equal((await post({matchId,accountId,analysisOptions:{keyItemId:'1'}})).status,400);
    previewPath=`/matches/${matchId}?accountId=${accountId}`;
+   if(process.env.E07_PREVIEW_EPISODE)previewPath=episodePath;
+   const newRun=await(await fetch(`${base}/api/datasets/${retried.datasetId}/analysis?accountId=${accountId}&analysisId=${retried.analysisId}`)).json();
+   if(newRun.episodes.length){const newReview=await(await fetch(`${base}/api/datasets/${retried.datasetId}/episodes/${newRun.episodes[0].episode.id}/reviews?accountId=${accountId}`)).json();assert.equal(newReview.current,null);}
+   assert.equal((await(await fetch(reviewUrl)).json()).current.version,1);
    assert.equal((await fetch(`${base}/api/replays/${matchId}/file?accountId=4294967294`)).status,404);
   }
   if(process.env.E04_PREVIEW_GATE){

@@ -21,7 +21,7 @@ test('reviews preserve history, enforce optimistic concurrency and remain tied t
     const input={expectedVersion:0,status:'confirmed_error',explanation:'Evidence reviewed',alternative:'Wait near ally; path and ally were verified',author:'Reviewer',material:'dota_client',perspective:{mode:'team',team:'radiant'}};
     const save=(value)=>saveEpisodeReview(pool,'dataset','1',episode.id,value);
     assert.equal((await readEpisodeReviews(pool,'dataset','1',episode.id)).current,null);
-    for(const invalid of [{...input,alternative:null},{...input,alternative:'  '},{...input,author:' '},{...input,explanation:' '},{...input,reviewedAt:'2030-01-01'},{...input,expectedVersion:-1},{...input,perspective:{mode:'team',team:'dire'}},{...input,material:'map'}])await assert.rejects(save(invalid));
+    for(const invalid of [{...input,status:['confirmed_error']},{...input,material:['timeline']},{...input,alternative:null},{...input,alternative:'  '},{...input,author:' '},{...input,explanation:' '},{...input,reviewedAt:'2030-01-01'},{...input,expectedVersion:-1},{...input,perspective:{mode:'team',team:'dire'}},{...input,material:'map'}])await assert.rejects(save(invalid));
     let saved=await save(input);assert.equal(saved.current.version,1);assert.equal(saved.reviews.length,1);assert.ok(saved.current.reviewedAt);
     assert.deepEqual(await save(input),saved);
     const a={...input,expectedVersion:1,status:'justified',explanation:'More evidence',alternative:null};

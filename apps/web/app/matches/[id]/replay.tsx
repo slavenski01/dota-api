@@ -8,16 +8,16 @@ import Overview from "./overview";
 type Detail = { summary: MatchSummary | null; fetchedAt: string | null; jobId: string | null; replay: { sizeBytes: number } | null };
 type State = { datasetId: string | null; analysisId: string | null; artifactId: string | null; analysisOptions: { keyItemId: string; gamePlan: string } | null; job: { status: string; limitations: string[]; error: { code: string } | null }; queueState: string | null; progress: { phase: string; bytes: number; totalBytes: number | null } | null };
 const terminal = new Set(["ready", "unavailable", "failed", "cancelled"]);
-const states: Record<string,string> = { queued:"В очереди",resolving:"Поиск реплея",downloading:"Подготовка реплея",parsing:"Проверка завершена",validating:"Проверка данных",analysing:"Анализ",ready:"Готово",unavailable:"Обработка недоступна",failed:"Ошибка обработки",cancelled:"Отменено" };
+const states: Record<string,string> = { queued:"В очереди",resolving:"Поиск реплея",downloading:"Подготовка реплея",parsing:"Разбор реплея",validating:"Проверка данных",analysing:"Анализ",ready:"Готово",unavailable:"Обработка недоступна",failed:"Ошибка обработки",cancelled:"Отменено" };
 const phases: Record<string,string> = { receiving:"Получено",decompressing:"Распаковано",checking:"Проверка файла и участника",stored:"Файл сохранён" };
 const errors: Record<string,string> = { replay_link_missing:"Источник не вернул ссылку на реплей.",replay_unavailable:"Реплей недоступен у источника.",invalid_replay:"Файл повреждён, имеет другой ID матча или не поддерживается парсером.",invalid_replay_format:"Файл не является поддерживаемым реплеем Dota 2.",replay_participant_mismatch:"Выбранный игрок не найден в реплее.",replay_match_mismatch:"ID матча не совпадает.",replay_size_limit:"Файл превышает допустимый размер.",replay_temporarily_unavailable:"Источник временно недоступен. Попробуйте позже.",provider_rate_limited:"Источник ограничил частоту запросов.",player_required:"Выберите профиль игрока.",replay_transfer_failed:"Не удалось получить или распаковать файл.",replay_transfer_timeout:"Превышено время загрузки.",bzip2_not_available:"На сервере не установлен bzip2.",analysis_not_connected:"Реплей готов. Расширенный анализ пока не подключён." };
 const size = (bytes:number) => `${(bytes / 1024 ** 2).toFixed(1)} MiB`;
-export default function MatchReplay({ matchId, items }: { matchId: string; items: { id: string; name: string }[] }) {
-  const [accountId,setAccountId]=useState("");const [detail,setDetail]=useState<Detail|null>(null);const [jobId,setJobId]=useState<string|null>(null);const [state,setState]=useState<State|null>(null);
+export default function MatchReplay({ matchId, accountId, items }: { matchId: string; accountId: string; items: { id: string; name: string }[] }) {
+  const [detail,setDetail]=useState<Detail|null>(null);const [jobId,setJobId]=useState<string|null>(null);const [state,setState]=useState<State|null>(null);
   const [error,setError]=useState("");const [busy,setBusy]=useState(false);const [upload,setUpload]=useState<number|null>(null);const [file,setFile]=useState<File|null>(null);
   const xhr=useRef<XMLHttpRequest|null>(null);const inFlight=useRef(false);
   const [keyItemId,setKeyItemId]=useState("");const [gamePlan,setGamePlan]=useState("");const loadedOptions=useRef<string|null>(null);
-  useEffect(()=>{setAccountId(new URLSearchParams(window.location.search).get("accountId")??"");return()=>xhr.current?.abort();},[]);
+  useEffect(()=>()=>xhr.current?.abort(),[]);
   const endpoint=`/api/replays/${encodeURIComponent(matchId)}?accountId=${encodeURIComponent(accountId)}`;
   const refresh=useCallback(async()=>{const result=await api<Detail>(endpoint);setDetail(result);setJobId(result.jobId);},[endpoint]);
   useEffect(()=>{if(accountId)void refresh().catch(e=>setError(e.message));},[accountId,refresh]);
@@ -53,13 +53,14 @@ export default function MatchReplay({ matchId, items }: { matchId: string; items
     {!accountId?<p role="alert">Откройте матч из истории выбранного профиля.</p>:<>
       <p className="muted">Игрок {accountId}. Состояние сохраняется: можно закрыть страницу и вернуться позже.</p>
       <Overview datasetId={state?.datasetId??null} accountId={accountId} summary={detail?.summary??null} fetchedAt={detail?.fetchedAt??null}/>
-      {error&&<p className="notice error" role="alert">{error}</p>}
+      {error&&<p className="notice error" role="alert">{error} <button onClick={()=>void refresh().then(()=>setError("")).catch(e=>setError(e.message))}>Повторить загрузку</button></p>}
       <section className="analysis-options"><h2>План этой игры</h2><p>Необязательно. Выберите ключевой предмет и задачу героя для хронологии после покупки. Параметры применяются при нажатии «Загрузить и разобрать» или «Повторить обработку».</p>
         <label>Ключевой предмет <select value={keyItemId} disabled={busy||active} onChange={e=>setKeyItemId(e.target.value)}><option value="">Не выбран</option>{items.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
         <label>План игры <textarea value={gamePlan} disabled={busy||active} maxLength={2000} onChange={e=>setGamePlan(e.target.value)} placeholder="Например: защищать основного героя и начинать бой после готовности команды"/></label>
         <p className="muted">Без этих параметров доступен журнал покупок; ключевой тайминг не выбирается автоматически.</p>
       </section>
       <section aria-live="polite"><h2>{imported?"Реплей сохранён":state?states[state.job.status]:"Загрузка реплея"}</h2>
+        {state&&<p>Обработка: {states[state.job.status]}</p>}
         {state?.job.error&&<p>{errors[state.job.error.code]??"Обработка не завершена. Можно повторить попытку или импортировать файл."}</p>}
         {state?.job.limitations.map(text=><p key={text}>{text}</p>)}
         {state?.queueState==="retry"&&<p>Ожидается автоматическая повторная попытка.</p>}
@@ -67,7 +68,7 @@ export default function MatchReplay({ matchId, items }: { matchId: string; items
         <div className="history-actions"><button disabled={busy||active} onClick={()=>void start()}>{state&&!active?"Повторить обработку":"Загрузить и разобрать"}</button>
           {active&&<button disabled={busy} onClick={()=>void cancel()}>Отменить обработку</button>}
           {imported&&<a href={`/api/replays/${encodeURIComponent(matchId)}/file?accountId=${encodeURIComponent(accountId)}`}>Скачать .dem{detail?.replay?` (${size(detail.replay.sizeBytes)})`:""}</a>}</div>
-        {!active&&imported&&<p className="muted">Файл проверен. События и наблюдения героев сохраняются при успешном разборе. Карта и текстовый отчёт ещё не подключены.</p>}
+        {!active&&imported&&<p className="muted">Файл проверен. После успешного разбора доступны таймлайн, состояния и ручные проверки эпизодов. Карта ожидает калибровки; текстовый отчёт ещё не подключён.</p>}
       </section>
       {state?.datasetId&&state.analysisId&&<MatchAnalysis datasetId={state.datasetId} analysisId={state.analysisId} accountId={accountId} items={items}/>}
       <section><h2>Импорт своего реплея</h2><p>Если файл недоступен у источника, выберите .dem, .dem.bz2 или .dem.zst. До 256 MiB; содержимое, матч и участник будут проверены.</p>
