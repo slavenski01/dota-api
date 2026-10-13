@@ -30,7 +30,7 @@ fun main(args: Array<String>) {
     }
     when (args.toList()) {
         emptyList<String>(), listOf("--help") ->
-            println("Usage: replay-parser [--help | --version | --check | --protocol | --validate-ndjson | --research-context FROM TO]\nDota Source 2 basic replay extraction via NDJSON. Research mode emits a separate JSON document (maximum 120-second window).")
+            println("Usage: replay-parser [--help | --version | --check | --protocol | --normalized | --validate-ndjson | --research-context FROM TO]\nDota Source 2 basic replay extraction via NDJSON. Research mode emits a separate JSON document (maximum 120-second window).")
         listOf("--version") -> println("replay-parser 0.0.0")
         listOf("--check") -> println("""{"service":"replay-parser","status":"ok","mode":"basic","replayParsing":true}""")
         listOf("--validate-ndjson") -> protocolCommand {

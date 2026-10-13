@@ -57,7 +57,7 @@ export default function MatchReplay({ matchId }: { matchId: string }) {
         <div className="history-actions"><button disabled={busy||active} onClick={()=>void start()}>{state&&!active?"Повторить обработку":"Загрузить и разобрать"}</button>
           {active&&<button disabled={busy} onClick={()=>void cancel()}>Отменить обработку</button>}
           {imported&&<a href={`/api/replays/${encodeURIComponent(matchId)}/file?accountId=${encodeURIComponent(accountId)}`}>Скачать .dem{detail?.replay?` (${size(detail.replay.sizeBytes)})`:""}</a>}</div>
-        {!active&&imported&&<p className="muted">Файл проверен. Подробные данные и анализ появятся после подключения следующих этапов.</p>}
+        {!active&&imported&&<p className="muted">Файл проверен. События и наблюдения героев сохраняются при успешном разборе. Карта и аналитический отчёт ещё не подключены.</p>}
       </section>
       <section><h2>Импорт своего реплея</h2><p>Если файл недоступен у источника, выберите .dem, .dem.bz2 или .dem.zst. До 256 MiB; содержимое, матч и участник будут проверены.</p>
         <label>Файл реплея <input type="file" accept=".dem,.bz2,.zst" disabled={busy||active} onChange={e=>setFile(e.target.files?.[0]??null)}/></label>

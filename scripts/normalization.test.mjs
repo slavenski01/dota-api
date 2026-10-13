@@ -7,6 +7,7 @@ import {openDatabase,migrate,LocalStorage,transaction,registerArtifact,REPLAY_ME
 import {normalizationHandler,decodeDataset} from '../packages/jobs/dist/normalization.js';
 import {datasetValidationHandler,datasetValidation} from '../packages/jobs/dist/dataset-validation.js';
 import {windowUsability} from '@dota/analysis';
+import {readDatasetContext} from "@dota/jobs";
 import {defaultVersions} from '@dota/jobs';
 test('real replay normalization is committed atomically with provenance and distinct event semantics',async t=>{
  const pool=openDatabase(process.env.TEST_DATABASE_URL), root=await mkdtemp('/tmp/dota-normalized-');
@@ -47,6 +48,11 @@ test('real replay normalization is committed atomically with provenance and dist
   assert.ok(window.every(r=>r.resources.status!=='known'||r.resources.value.every(v=>v.canUse.status==='unknown')));
   assert.deepEqual(await readStateWindow(pool,storage,result.datasetId,0,10,'radiant'),[]);
   assert.equal(new Set(window.map(r=>`${r.playerSlot}:${r.gameTimeSeconds}`)).size,window.length);
+  const decision=await readDatasetContext(pool,storage,result.datasetId,'decision',death.gameTimeSeconds,0);
+  assert.equal(decision.mode,'decision');assert.equal(decision.states.length,10);assert.ok(decision.states.every(s=>s.visibility.status==='unknown'&&s.hp.status==='unknown'&&s.lastKnownPosition===null));
+  const retro=await readDatasetContext(pool,storage,result.datasetId,'retrospective',death.gameTimeSeconds,0);assert.equal(retro.perspective,'omniscient');assert.ok(retro.states.some(s=>s.hp.status==='known'));
+  await assert.rejects(readDatasetContext(pool,storage,result.datasetId,'wrong',0,0),/invalid_context_request/);
+
 
  } finally {await pool.end();await rm(root,{recursive:true,force:true});}
 });

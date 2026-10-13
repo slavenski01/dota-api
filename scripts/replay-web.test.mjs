@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { openDatabase,migrate,selectProfile,transaction,saveHistoryPage,parseHistory,LocalStorage } from '@dota/persistence';
 import { startQueue,consume,executeWorkflow,replayHandlers } from '@dota/jobs';
-async function until(fn){for(let n=0;n<250;n++){const value=await fn();if(value)return value;await delay(100);}throw Error('timeout');}
+async function until(fn){for(let n=0;n<600;n++){const value=await fn();if(value)return value;await delay(100);}throw Error('timeout');}
 test('production replay HTTP: dedup, missing source, persistent summary, manual validation and download',async(t)=>{
  const pool=openDatabase(process.env.TEST_DATABASE_URL);const root=await mkdtemp('/tmp/dota-replay-web-');let web,boss,stop;
  try {
@@ -46,6 +46,15 @@ test('production replay HTTP: dedup, missing source, persistent summary, manual 
    const sample=manifest.records[0],matchId=String(sample.matchId),accountId=String(manifest.accountId),path=resolve(dirname(manifestPath),sample.replayFile);
    const result=await upload(matchId,accountId,createReadStream(path));assert.equal(result.status,202);const {id}=await result.json();
    const done=await finished(id);assert.equal(done.job.error.code,'analysis_not_connected');assert.ok(done.artifactId);assert.equal(done.accountId,accountId);assert.equal(done.progress.phase,'stored');
+   assert.equal(done.job.dataLevel,'replay_context');assert.ok(done.datasetId);
+   const contextUrl=`${base}/api/datasets/${done.datasetId}/context?time=60&playerSlot=0`;
+   const contextResponse=await fetch(contextUrl);assert.equal(contextResponse.status,200);
+   const context=await contextResponse.json();assert.equal(context.mode,'decision');assert.equal(context.states.length,10);assert.ok(context.states.every(s=>s.hp.status==='unknown'&&s.visibility.status==='unknown'));
+   const retro=await(await fetch(contextUrl+'&mode=retrospective')).json();assert.equal(retro.mode,'retrospective');assert.equal(retro.perspective,'omniscient');assert.ok(retro.states.some(s=>s.hp.status==='known'));
+   assert.equal((await fetch(contextUrl+'&mode=invalid')).status,400);
+   assert.equal((await fetch(contextUrl.replace('time=60','time=NaN'))).status,400);
+   assert.equal((await fetch(contextUrl.replace(done.datasetId,'nonexistent'))).status,404);
+
    const downloaded=await fetch(`${base}/api/replays/${matchId}/file?accountId=${accountId}`);assert.equal(downloaded.status,200);assert.match(downloaded.headers.get('content-disposition'),/\.dem/);
    const hash=createHash('sha256');for await(const chunk of downloaded.body)hash.update(chunk);assert.equal(hash.digest('hex'),sample.sha256Replay);
    const retry=await(await post({matchId,accountId})).json();assert.equal((await finished(retry.id)).artifactId,done.artifactId);

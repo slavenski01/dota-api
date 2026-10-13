@@ -26,7 +26,7 @@ export function errorResponse(error: unknown): Response {
     return response;
   }
   const code = error instanceof JobError ? error.code : "service_unavailable";
-  const status = code === "job_not_found" ? 404 : ["invalid_request", "invalid_json", "invalid_job_id", "artifact_match_mismatch", "request_too_large", "invalid_player_id", "player_required"].includes(code) ? 400 : code === "origin_not_allowed" ? 403 : 503;
+  const status = code === "job_not_found" || code === "dataset_not_validated" ? 404 : ["invalid_context_request", "invalid_request", "invalid_json", "invalid_job_id", "artifact_match_mismatch", "request_too_large", "invalid_player_id", "player_required"].includes(code) ? 400 : code === "origin_not_allowed" ? 403 : 503;
   return json({ error: code }, status);
 }
 export function checkOrigin(request: Request): void {

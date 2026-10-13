@@ -24,7 +24,13 @@ for(const [i,sample] of manifest.records.entries()){
   if(state.inventory.status==='known')assert.equal(state.inventory.value.length,r.inventory.entries.length);
  }
  assert.ok(compared>0,'No matching control ticks');
+ let deathChecks=0;
+ for(const death of rows.filter(r=>r.kind==='event'&&r.data.type==='death')){
+  const observation=states.find(s=>s.playerSlot===death.data.victimSlot&&s.gameTimeSeconds>=death.gameTimeSeconds&&s.gameTimeSeconds-death.gameTimeSeconds<=1.1);
+  assert.ok(observation,'Missing post-death observation in control replay');
+  assert.equal(observation.alive.status,'known');assert.equal(observation.alive.value,false);deathChecks++;
+ }
  assert.equal(new Set(states.map(r=>`${r.playerSlot}:${r.gameTimeSeconds}`)).size,states.length);
- const result={sample:label,states:states.length,controlValuesCompared:compared,bytes:run.stdout.length,seconds:(performance.now()-started)/1000};results.push(result);console.log(result);
+ const result={sample:label,states:states.length,controlValuesCompared:compared,deathChecks,bytes:run.stdout.length,seconds:(performance.now()-started)/1000};results.push(result);console.log(result);
  writeFileSync(resolve(out,'summary.json'),JSON.stringify(results,null,2)+'\n');
 }

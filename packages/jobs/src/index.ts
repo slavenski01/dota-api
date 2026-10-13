@@ -72,3 +72,5 @@ export type { HistoryMessage } from "./history.js";
 export { REPLAY_LIMITS, importReplay, downloadReplay, validateReplay } from "./replay.js";
 export type { ReplayProgress, ImportedReplay } from "./replay.js";
 export { replayHandlers } from "./replay-workflow.js";
+export { readDatasetContext } from "./player-context.js";
+export { datasetValidation } from "./dataset-validation.js";
