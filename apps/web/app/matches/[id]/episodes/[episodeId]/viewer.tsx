@@ -16,6 +16,7 @@ import { HeroPreloads } from "../../../../components/hero-portrait";
 import resources from "../../../../../../../services/replay-parser/src/main/resources/resource-ids.json";
 import EpisodeReviews from "./reviews";
 import EpisodeMap from "./map";
+import MatchNotes from '../../explore/notes';
 const names = new Map(Object.entries(resources.items).map(([name,id]) => [id, name.replace(/^item_/, "").replaceAll("_", " ")]));
 const numeric = (field: ViewerState["hp"] | undefined) => field?.status === "known" ? new Intl.NumberFormat("ru-RU",{maximumFractionDigits:1}).format(field.value) : "неизвестно";
 export default function EpisodeViewer({ matchId, datasetId, episodeId, accountId, initialMode, initialTime }: { matchId: string; datasetId: string; episodeId: string; accountId: string; initialMode: string; initialTime: string }) {
@@ -92,6 +93,8 @@ export default function EpisodeViewer({ matchId, datasetId, episodeId, accountId
         <a href={`${endpoint}?accountId=${encodeURIComponent(accountId)}`}>Исходные основания и версии эпизода</a>
       </section>}
     </>}
-    {authorized && last && <EpisodeReviews endpoint={endpoint} accountId={accountId} playerSlot={last.playerSlot}/>}
+    {valid&&slot!==undefined&&<MatchNotes key={`${datasetId}:${accountId}:${mode}:${reportId??''}:${episodeId}`} datasetId={datasetId} accountId={accountId} matchId={matchId} time={time} slot={slot} mode={mode as 'decision'|'retrospective'} heroName={hero(last?.heroes.find(h=>h.playerSlot===slot)?.heroId)}
+      coach={coach.frame?{reportId:coach.frame.reportId,analysisId:coach.frame.analysisId,episodeId}:undefined} reportVersion={coach.frame?.version}/>}
+    {authorized && last && <EpisodeReviews endpoint={endpoint} accountId={accountId} playerSlot={last.playerSlot} reportVersion={coach.frame?.version}/>}
   </main>;
 }

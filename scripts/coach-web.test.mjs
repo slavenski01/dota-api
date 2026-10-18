@@ -64,8 +64,20 @@ test('production coach HTTP: versioned report survives restart and marks changed
     assert.equal((await(await fetch(`${playbackUrl}&bucket=40`)).json()).end,1200);
     assert.equal((await fetch(`${playbackUrl}&bucket=41`)).status,400);
     assert.equal((await fetch(`${base}/matches/1/coach?datasetId=dataset&analysisId=${input.context.analysisId}&accountId=1&reportId=${report.id}`)).status,200);
+    const noteUrl=`${base}/api/datasets/dataset/notes?accountId=1`;
+    const note={id:randomUUID(),time:1195,playerSlot:0,mode:'retrospective',content:'Проверка связанной заметки; это не подтверждение ошибки.',coach:{reportId:report.id,analysisId:input.context.analysisId,episodeId}};
+    const postNote=(body)=>fetch(noteUrl,{method:'POST',headers:{'Content-Type':'application/json',Origin:base},body:JSON.stringify(body)});
+    const saved=await(await postNote(note)).json();assert.equal(saved.id,note.id);assert.deepEqual(saved.coach,note.coach);
+    assert.equal((await(await postNote(note)).json()).id,note.id);
+    assert.equal((await postNote({...note,coach:null})).status,409);
+    assert.equal((await postNote({...note,id:randomUUID(),coach:{...note.coach,reportId:randomUUID()}})).status,404);
+    assert.equal((await postNote({...note,id:randomUUID(),coach:{...note.coach,episodeId:'foreign'}})).status,404);
+    assert.equal((await postNote({...note,id:randomUUID(),time:1})).status,400);
+    assert.equal((await pool.query('SELECT count(*)::int AS n FROM dota.episode_reviews')).rows[0].n,0);
+    assert.equal((await pool.query('SELECT count(*)::int AS n FROM dota.coach_runs')).rows[0].n,1);
     await stopWeb();await startWeb();
     assert.deepEqual((await(await fetch(url)).json()).reports[0],report);
+    assert.deepEqual((await(await fetch(`${noteUrl}&mode=retrospective`)).json()).notes,[saved]);
     await saveEpisodeReview(pool,'dataset','1',input.context.episodes[0].id,{expectedVersion:0,status:'uncertain',explanation:'Нужен обзор игрока.',alternative:null,author:'Fixture',material:'timeline',perspective:{mode:'omniscient'}});
     const changed=(await(await fetch(url)).json()).reports[0];assert.equal(changed.stale,true);assert.deepEqual(changed.output,report.output);assert.equal(changed.context.episodes[0].review,null);
     assert.equal((await post({...payload,requestKey:randomUUID()})).status,202);
@@ -73,5 +85,20 @@ test('production coach HTTP: versioned report survives restart and marks changed
     assert.equal(rows.length,2);assert.equal(rows[0].version,2);assert.equal(rows[0].context.episodes[0].review.version,1);assert.equal(rows[1].stale,true);
     assert.equal((await(await fetch(exact)).json()).reports[0].id,report.id);
     assert.equal((await(await fetch(viewUrl)).json()).reportId,report.id);
+    assert.equal(rows[0].reviewSources[0].review.author,'Fixture');assert.equal(rows[0].reviewSources[0].review.version,1);
+    assert.equal(rows[0].reviewSources[0].review.material,'timeline');assert.deepEqual(rows[1].reviewSources,[]);
+    const second=rows[0];
+    await saveEpisodeReview(pool,'dataset','1',episodeId,{expectedVersion:1,status:'justified',explanation:'Новая контрольная оценка.',alternative:null,author:'Другой автор',material:'dota_client',perspective:{mode:'omniscient'}});
+    const unchanged=(await(await fetch(`${url}&reportId=${second.id}`)).json()).reports[0];
+    assert.equal(unchanged.stale,true);assert.deepEqual(unchanged.context,second.context);assert.deepEqual(unchanged.reviewSources,second.reviewSources);assert.deepEqual(unchanged.output,second.output);
+    assert.equal((await pool.query('SELECT count(*)::int AS n FROM dota.coach_runs')).rows[0].n,2);
+    await stopWeb();await startWeb();
+    assert.deepEqual((await(await fetch(`${url}&reportId=${second.id}`)).json()).reports[0],unchanged);
+    assert.deepEqual((await(await fetch(`${noteUrl}&mode=retrospective`)).json()).notes,[saved]);
+    // Future formats remain unavailable rather than being interpreted as today's schema.
+    const unknown=randomUUID();
+    await pool.query(`INSERT INTO dota.coach_runs(id,request_key,queue_job_id,dataset_id,analysis_id,player_slot,version,status,input,config,result)
+      SELECT $1,$2,$3,dataset_id,analysis_id,player_slot,3,'ready',jsonb_set(input,'{schemaVersion}','"future-version"'),config,result FROM dota.coach_runs WHERE id=$4`,[unknown,randomUUID(),randomUUID(),report.id]);
+    assert.equal((await fetch(`${url}&reportId=${unknown}`)).status,409);
   }finally{if(web)await stopWeb();await stop?.();await boss?.stop();await pool.end();}
 });

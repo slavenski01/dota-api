@@ -6,7 +6,7 @@ import { api } from "../../../../../lib/source-errors";
 const labels: Record<Review["status"],string> = { unreviewed: "Не проверено", confirmed_error: "Подтверждённая ошибка", justified: "Оправданное действие", uncertain: "Неопределённо" };
 const materials: Record<Review["material"],string> = {timeline:"Таймлайн и состояния",map:"Карта",dota_client:"Клиент Dota 2"};
 const stamp = (value: string) => new Intl.DateTimeFormat("ru-RU",{timeZone:"Europe/Moscow",dateStyle:"medium",timeStyle:"medium"}).format(new Date(value)) + " МСК";
-export default function EpisodeReviews({ endpoint, accountId, playerSlot }: { endpoint: string; accountId: string; playerSlot: number }) {
+export default function EpisodeReviews({ endpoint, accountId, playerSlot, reportVersion }: { endpoint: string; accountId: string; playerSlot: number; reportVersion?:number|undefined }) {
   const [history,setHistory]=useState<ReviewHistory|null>(null),[error,setError]=useState(""),[notice,setNotice]=useState(""),[busy,setBusy]=useState(false);
   const [status,setStatus]=useState<Review["status"]>("unreviewed"),[explanation,setExplanation]=useState(""),[alternative,setAlternative]=useState(""),[author,setAuthor]=useState("");
   const [material,setMaterial]=useState<Review["material"]>("timeline"),[perspective,setPerspective]=useState("omniscient");
@@ -25,6 +25,7 @@ export default function EpisodeReviews({ endpoint, accountId, playerSlot }: { en
   return <section className="review-editor"><h2>Ручная проверка</h2>
     <p>Текущий статус: <strong>{history ? labels[history.current?.status??"unreviewed"] : "загрузка…"}</strong>. Автоматический отбор этот статус не меняет.</p>
     <p className="muted">Оценка относится к этой версии эпизода и данных. После повторного разбора новая версия требует отдельной проверки. Укажите фактический источник и пределы своей проверки.</p>
+    {reportVersion!==undefined&&<p>Версия отчёта {reportVersion} сохранит прежнюю оценку. После сохранения вернитесь к отчёту и нажмите «Создать новую версию», если хотите учесть изменения. Автоматического запуска тренера нет.</p>}
     {material === "map" && <p className="notice">Карта использует приблизительную подложку 7.40. Проверка по ней относится к полному обзору и не подтверждает, что игрок видел угрозу, или что нарисованный путь был проходим.</p>}
     {error&&<p role="alert" className="notice error">{error}</p>}{notice&&<p role="status" className="notice">{notice}</p>}
     <form onSubmit={event=>void save(event)}><fieldset disabled={busy||!history}>

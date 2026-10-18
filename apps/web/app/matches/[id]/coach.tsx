@@ -15,8 +15,9 @@ export default function MatchCoach({matchId,datasetId,analysisId,accountId,pinne
   const endpoint=`/api/datasets/${encodeURIComponent(datasetId)}/coach?${new URLSearchParams({accountId,analysisId})}`;
   async function refresh(signal?:AbortSignal) {
     const options=signal?{signal}:undefined;
-    const response=await api<{reports:CoachReportView[]}>(endpoint,options);
     const exact=selected?await api<{reports:CoachReportView[]}>(`${endpoint}&${new URLSearchParams({reportId:selected})}`,options):null;
+    // A different, newer format in the history must not hide a valid pinned snapshot.
+    const response=await api<{reports:CoachReportView[]}>(endpoint,options).catch(e=>{if(exact)return exact;throw e;});
     const rows=exact?[...response.reports.filter(r=>r.id!==selected),...exact.reports].sort((a,b)=>b.version-a.version):response.reports;
     if(rows.some(r=>r.context.matchId!==matchId))throw new Error('Отчёт относится к другому матчу.');
     setReports(rows);setLoading(false);
@@ -38,6 +39,7 @@ export default function MatchCoach({matchId,datasetId,analysisId,accountId,pinne
   }
   const active=reports.some(r=>['queued','running'].includes(r.status));
   const report=selected?reports.find(r=>r.id===selected):reports[0];
+  useEffect(()=>{if(report){setRole(report.context.settings.role===null?'':String(report.context.settings.role));setGoal(report.context.settings.goal);}},[report?.id]);
   const facts=new Map(report?.context.facts.map(f=>[f.id,f])??[]);
   const output=report?.output;
   const episodeLink=(id:string)=>`/matches/${encodeURIComponent(matchId)}/episodes/${encodeURIComponent(id)}?${new URLSearchParams({datasetId,accountId,analysisId,reportId:report!.id,time:String(report!.context.episodes.find(e=>e.id===id)!.time),hero:String(report!.context.playerSlot),mode:'retrospective'})}`;
@@ -70,6 +72,13 @@ export default function MatchCoach({matchId,datasetId,analysisId,accountId,pinne
       </>}
       <details><summary>Что ограничивает выводы</summary>{report.context.limitations.map((text,i)=><p key={i}>{text}</p>)}
         {report.context.skipped.map((s,i)=><p key={i}>{s.ruleId}: {s.reasons.join('; ')}</p>)}</details>
+      <details><summary>Ручные оценки во входах этой версии</summary>
+        {report.context.episodes.some(e=>e.review)?report.context.episodes.filter(e=>e.review).map(e=>{const r=report.reviewSources.find(s=>s.episodeId===e.id)?.review;return <article key={e.id}><h3>{time(e.time)} · оценка версии {e.review!.version}</h3>
+          <p>{reviewLabels[e.review!.status]}</p><p>{e.review!.explanation}</p>{e.review!.alternative&&<p>Альтернатива: {e.review!.alternative}</p>}
+          {r?<p>Автор: {r.author} · {new Date(r.reviewedAt).toLocaleString('ru-RU',{timeZone:'Europe/Moscow'})} МСК · {r.material==='map'?'Приблизительная карта 7.40':r.material==='timeline'?'Таймлайн и состояния':'Клиент Dota 2'} · {r.perspective.mode==='omniscient'?'полный обзор':`команда ${r.perspective.team}`}</p>:<p>Автор и материал исходной оценки недоступны; актуальная оценка не подставляется.</p>}
+        </article>;}):<p>При подготовке этой версии ручных оценок не было.</p>}
+        <p>Заметки сохраняются отдельно и не входят в запрос тренеру. Новые оценки не переписывают эти входы.</p>
+      </details>
       <details><summary>Данные запуска</summary><p>Модель: {report.model} · {report.reasoning}. {report.durationMs===null?'Длительность неизвестна':`${(report.durationMs/1000).toFixed(1)} с`}.</p>
         <p>{report.usage?`Токены: ${report.usage.inputTokens} входных (${report.usage.cachedInputTokens} из кэша), ${report.usage.outputTokens} выходных.`:'Расход токенов неизвестен.'} Стоимость в деньгах не предоставлена; используется подписка.</p>
         <p>Версия формата: {report.versions.schema}. CLI: {report.cliVersion??'неизвестна'}.</p><p className="coach-hash">Хеш контекста: {report.versions.contextSha256}<br/>Хеш методики: {report.versions.skillSha256}</p></details>

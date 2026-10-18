@@ -7,12 +7,14 @@ import { coachHash, coachInstructions, type CoachUsage } from "./coach-provider.
 import { readEpisode } from './analysis.js';
 import { readMatchExplorer, type ViewMode } from './match-explorer.js';
 import { episodeViewingWindow } from './episode-window.js';
+import type { Review } from '@dota/contracts';
 
 export interface CoachReportView {
   id: string; version: number; status: string; context: CoachContext; output: CoachOutput | null; error: string | null;
   model: string; reasoning: string; cliVersion: string | null; usage: CoachUsage | null; durationMs: number | null;
   createdAt: string; finishedAt: string | null; stale: boolean; staleReasons: string[];
   versions: { schema: string; contextSha256: string; skillSha256: string };
+  reviewSources: {episodeId:string;review:Review|null}[];
 }
 export async function requestCoachReport(pool: Pool, boss: PgBoss, datasetId: string, accountId: string, analysisId: string, value: unknown) {
   if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!['requestKey','settings'].includes(k))) throw new JobError('coach_invalid_request');
@@ -25,6 +27,7 @@ export async function readCoachReports(pool: Pool, boss: PgBoss, datasetId: stri
   const skill=await coachInstructions();
   const latest=(await pool.query('SELECT episode_id,max(version)::int AS version FROM dota.episode_reviews WHERE dataset_id=$1 GROUP BY episode_id',[datasetId])).rows;
   const reviews=new Map(latest.map(r=>[r.episode_id,r.version]));
+  const history:{episode_id:string;payload:Review}[]=(await pool.query('SELECT episode_id,payload FROM dota.episode_reviews WHERE dataset_id=$1',[datasetId])).rows;
   return rows.map(row=>{
     const c=row.input.context as CoachContext;
     if (row.input.schemaVersion!==COACH_SCHEMA_VERSION || c.schemaVersion!==COACH_SCHEMA_VERSION || coachHash(c)!==row.input.contextSha256) throw new JobError('coach_version_unsupported');
@@ -32,10 +35,15 @@ export async function readCoachReports(pool: Pool, boss: PgBoss, datasetId: stri
     if(c.episodes.some(e=>(reviews.get(e.id)??0)!==(e.review?.version??0))) staleReasons.push('review_changed');
     if(row.input.instructions.sha256!==skill.sha256) staleReasons.push('method_changed');
     const result=row.result as {output: CoachOutput;cliVersion:string}|null;
+    const reviewSources=c.episodes.filter(e=>e.review).map(e=>{
+      const snapshot=e.review!,saved=history.find(r=>r.episode_id===e.id&&r.payload.version===snapshot.version)?.payload;
+      const matches=saved&&saved.status===snapshot.status&&saved.explanation===snapshot.explanation&&saved.alternative===snapshot.alternative;
+      return {episodeId:e.id,review:matches?saved:null};
+    });
     return {id:row.id,version:row.version,status:row.status,context:c,output:row.status==='ready'?result!.output:null,error:row.error_code,
       model:row.config.model,reasoning:row.config.reasoning,cliVersion:result?.cliVersion??null,usage:row.usage,durationMs:row.duration_ms,
       createdAt:new Date(row.created_at).toISOString(),finishedAt:row.finished_at?new Date(row.finished_at).toISOString():null,
-      stale:staleReasons.length>0,staleReasons,versions:{schema:row.input.schemaVersion,contextSha256:row.input.contextSha256,skillSha256:row.input.instructions.sha256}};
+      stale:staleReasons.length>0,staleReasons,reviewSources,versions:{schema:row.input.schemaVersion,contextSha256:row.input.contextSha256,skillSha256:row.input.instructions.sha256}};
   });
 }
 
