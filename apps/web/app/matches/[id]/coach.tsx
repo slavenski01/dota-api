@@ -1,0 +1,67 @@
+"use client";
+import {useEffect,useRef,useState} from 'react';
+import type {CoachReportView,CoachSettings} from '@dota/jobs';
+import {api,sourceError} from '../../../lib/source-errors';
+const time=(s:number)=>`${s<0?'−':''}${Math.floor(Math.abs(s)/60)}:${String(Math.floor(Math.abs(s)%60)).padStart(2,'0')}`;
+const reviewLabels={unreviewed:'Не проверено',confirmed_error:'Ошибка подтверждена автором оценки',justified:'Оправдано по ручной оценке',uncertain:'Вывод неопределён'};
+const goals={overview:'Общий разбор',deaths_trades:'Смерти и размены',objectives:'Потери объектов',item_timing:'После ключевого предмета'};
+export default function MatchCoach({datasetId,analysisId,accountId}:{datasetId:string;analysisId:string;accountId:string}) {
+  const [reports,setReports]=useState<CoachReportView[]>([]),[selected,setSelected]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(true),[sending,setSending]=useState(false);
+  const [role,setRole]=useState(''),[goal,setGoal]=useState<CoachSettings['goal']>('overview');
+  const pending=useRef<{key:string;settings:CoachSettings}|null>(null);
+  const endpoint=`/api/datasets/${encodeURIComponent(datasetId)}/coach?${new URLSearchParams({accountId,analysisId})}`;
+  async function refresh(signal?:AbortSignal) {
+    const response=await api<{reports:CoachReportView[]}>(endpoint,signal?{signal}:undefined);setReports(response.reports);setLoading(false);
+  }
+  useEffect(()=>{
+    const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;
+    const poll=async()=>{try{await refresh(controller.signal);setError('');}catch(e){if(!controller.signal.aborted){setError((e as Error).message);setLoading(false);}}finally{if(!controller.signal.aborted)timer=setTimeout(poll,2500);}};
+    void poll();return()=>{controller.abort();clearTimeout(timer);};
+  },[endpoint]);
+  async function start() {
+    if(sending)return;setSending(true);setError('');
+    const settings:CoachSettings={role:role?Number(role) as CoachSettings['role']:null,goal};
+    if(!pending.current||JSON.stringify(pending.current.settings)!==JSON.stringify(settings))pending.current={key:crypto.randomUUID(),settings};
+    try {
+      const response=await api<{id:string}>(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestKey:pending.current.key,settings})});
+      pending.current=null;setSelected(response.id);await refresh();
+    }catch(e){setError((e as Error).message);}finally{setSending(false);}
+  }
+  const active=reports.some(r=>['queued','running'].includes(r.status));
+  const report=reports.find(r=>r.id===selected)??reports[0];
+  const facts=new Map(report?.context.facts.map(f=>[f.id,f])??[]);
+  const output=report?.output;
+  const episodeLink=(id:string)=>`/matches/${encodeURIComponent(report!.context.matchId)}/episodes/${encodeURIComponent(id)}?${new URLSearchParams({datasetId,accountId})}`;
+  return <section className="coach-report" aria-label="AI-тренер"><h2>AI-тренер</h2>
+    <p>Разбор по доступным фактам с вопросами к просмотру. Использует общий лимит вашей подписки Codex.</p>
+    <div className="coach-form"><label>Подтверждённая позиция в этом матче<select value={role} onChange={e=>setRole(e.target.value)} disabled={sending||active}>
+      <option value="">Неизвестна</option>{[1,2,3,4,5].map(r=><option key={r} value={r}>Позиция {r}</option>)}</select></label>
+      <label>Цель разбора<select value={goal} onChange={e=>setGoal(e.target.value as CoachSettings['goal'])} disabled={sending||active}>{Object.entries(goals).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+      <button onClick={()=>void start()} disabled={loading||sending||active}>{sending?'Отправка…':active?'Разбор выполняется…':reports.length?'Создать новую версию':'Получить разбор'}</button></div>
+    {goal==='item_timing'&&<p className="muted">Используется ключевой предмет и план, выбранные при обработке матча. Если они не заданы, это направление будет пропущено.</p>}
+    {error&&<p role="alert">{error}</p>}{loading&&<p role="status">Загрузка отчётов…</p>}
+    {reports.length>0&&<label>Версия отчёта<select value={report?.id??''} onChange={e=>setSelected(e.target.value)}>{reports.map(r=><option key={r.id} value={r.id}>Версия {r.version} · {new Date(r.createdAt).toLocaleString('ru-RU')} · {r.status==='ready'?'Готово':r.status==='failed'?'Не завершена':r.status==='queued'?'В очереди':'Выполняется'}</option>)}</select></label>}
+    {report&&<><p className="muted">{goals[report.context.settings.goal]} · {report.context.settings.role===null?'Позиция неизвестна':`Позиция ${report.context.settings.role}, указана вами`} · Рейтинг неизвестен</p>
+      {report.stale&&<p className="notice">Ручная оценка или методика изменились. Этот отчёт сохранён с прежними входами; создайте новую версию для обновления.</p>}
+      {['queued','running'].includes(report.status)&&<p role="status">{report.status==='queued'?'Задание в очереди.':'Codex готовит разбор.'} Можно закрыть страницу; результат сохранится.</p>}
+      {report.status==='failed'&&<p role="alert">{sourceError(report.error??'coach_provider_failed')} Статистика и эпизоды доступны ниже.</p>}
+      {output&&<><h3>Сводка по фактам</h3><ul>{output.summaryFactIds.map(id=><li key={id}>{facts.get(id)?.text}</li>)}</ul>
+        {report.context.outcome!=='candidates'&&<p>{report.context.outcome==='no_candidates'?'Проверенные правила не нашли кандидатов.':'Для части правил данных недостаточно; кандидаты не найдены.'} Это не доказывает отсутствие ошибок.</p>}
+        {output.episodes.map(e=>{const context=report.context.episodes.find(x=>x.id===e.episodeId)!;return <article key={e.episodeId}>
+          <h3>{time(context.time)} · Эпизод для проверки</h3><ul>{e.factIds.map(id=><li key={id}>{facts.get(id)?.text}</li>)}</ul>
+          <p><strong>Гипотеза:</strong> {e.hypothesis}</p><p><strong>Вопрос к просмотру:</strong> {e.question}</p>
+          <p>Ручная проверка: {context.review?`${reviewLabels[context.review.status]} (версия ${context.review.version})`:'Не выполнена'}.</p>
+          {context.review&&<details><summary>Оценка, использованная в отчёте</summary><p>{context.review.explanation}</p>{context.review.alternative&&<p>Альтернатива автора: {context.review.alternative}</p>}</details>}
+          <a href={episodeLink(e.episodeId)}>Открыть эпизод</a><details><summary>Основания и ограничения</summary>{context.limitations.map((text,i)=><p key={i}>{text}</p>)}<p>Обзор, готовность ресурсов и выполнимость альтернатив не установлены.</p><ul>{e.factIds.map(id=><li key={id}>{id}: {facts.get(id)?.evidenceIds.join(', ')}</li>)}</ul></details>
+        </article>;})}
+        <h3>{output.nextAction.kind==='experiment'?'Следующее действие — эксперимент':'Следующее действие — проверка'}</h3><p>{output.nextAction.text}</p>
+        {output.nextAction.episodeId&&<a href={episodeLink(output.nextAction.episodeId)}>Перейти к выбранному эпизоду</a>}
+      </>}
+      <details><summary>Что ограничивает выводы</summary>{report.context.limitations.map((text,i)=><p key={i}>{text}</p>)}
+        {report.context.skipped.map((s,i)=><p key={i}>{s.ruleId}: {s.reasons.join('; ')}</p>)}</details>
+      <details><summary>Данные запуска</summary><p>Модель: {report.model} · {report.reasoning}. {report.durationMs===null?'Длительность неизвестна':`${(report.durationMs/1000).toFixed(1)} с`}.</p>
+        <p>{report.usage?`Токены: ${report.usage.inputTokens} входных (${report.usage.cachedInputTokens} из кэша), ${report.usage.outputTokens} выходных.`:'Расход токенов неизвестен.'} Стоимость в деньгах не предоставлена; используется подписка.</p>
+        <p>Версия формата: {report.versions.schema}. CLI: {report.cliVersion??'неизвестна'}.</p><p className="coach-hash">Хеш контекста: {report.versions.contextSha256}<br/>Хеш методики: {report.versions.skillSha256}</p></details>
+    </>}
+  </section>;
+}

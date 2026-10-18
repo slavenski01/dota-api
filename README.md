@@ -180,7 +180,7 @@ production web и Kotlin CLI; Gradle Wrapper включён в репозито�
 | `packages/persistence`, `packages/jobs` | Хранение, источники, очередь и обработка |
 | `scripts` | Миграции, проверки, эксплуатация и приёмка |
 | [Архитектура](docs/architecture.md) | Действующие связи, инварианты и границы |
-| [План](tasks-plan.md), [доска](tasks-board.html) | 48 DONE, 5 TODO, 6 SKIPPED; E08-T01/T02 завершены, далее E08-T03 |
+| [План](tasks-plan.md), [доска](tasks-board.html) | 49 DONE, 4 TODO, 6 SKIPPED; E08-T01–T03 завершены, далее E08-T04 |
 | [Контракты](docs/contracts.md), [хранение](docs/persistence.md) | Форматы, версии и транзакции |
 | [Источники](docs/profiles-and-history.md), [реплеи](docs/replay-import.md) | API и обработка недоступности |
 | [Аналитика](docs/analysis.md), [эпизоды](docs/episode-viewer.md) | Готовые метрики и ручные оценки |

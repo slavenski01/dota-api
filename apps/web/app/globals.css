@@ -109,3 +109,8 @@ td:nth-child(6) { min-width: 220px; }
 .review-editor details { margin-top: 24px; overflow-wrap: anywhere; }
 
 .frame-status { min-height: 3em; margin: 12px 0; }
+.coach-report { border-top: 1px solid #465366; margin-top: 2rem; padding-top: 1rem; }
+.coach-form { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; margin-bottom: 1rem; }
+.coach-form label { display: grid; gap: .35rem; }
+.coach-report article { border: 1px solid #465366; border-radius: .5rem; padding: 1rem; margin: 1rem 0; }
+.coach-hash { overflow-wrap: anywhere; font-size: .85rem; }

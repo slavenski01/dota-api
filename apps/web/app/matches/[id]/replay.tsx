@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { MatchSummary } from "@dota/persistence";
 import { api } from "../../../lib/source-errors";
 import MatchAnalysis from "./analysis";
+import MatchCoach from "./coach";
 import Overview from "./overview";
 type Detail = { summary: MatchSummary | null; fetchedAt: string | null; jobId: string | null; replay: { sizeBytes: number } | null };
 type State = { datasetId: string | null; analysisId: string | null; artifactId: string | null; analysisOptions: { keyItemId: string; gamePlan: string } | null; job: { status: string; limitations: string[]; error: { code: string } | null }; queueState: string | null; progress: { phase: string; bytes: number; totalBytes: number | null } | null };
@@ -71,7 +72,7 @@ export default function MatchReplay({ matchId, accountId, items }: { matchId: st
           {imported&&<a href={`/api/replays/${encodeURIComponent(matchId)}/file?accountId=${encodeURIComponent(accountId)}`}>Скачать .dem{detail?.replay?` (${size(detail.replay.sizeBytes)})`:""}</a>}</div>
         {!active&&imported&&<p className="muted">После успешного разбора доступны просмотр всей игры, приблизительная карта 7.40 и ручные проверки эпизодов. AI-тренер отложен после MVP.</p>}
       </section>
-      {state?.datasetId&&state.analysisId&&<MatchAnalysis datasetId={state.datasetId} analysisId={state.analysisId} accountId={accountId} items={items}/>}
+      {state?.datasetId&&state.analysisId&&<><MatchCoach key={`${state.datasetId}:${state.analysisId}:${accountId}`} datasetId={state.datasetId} analysisId={state.analysisId} accountId={accountId}/><MatchAnalysis datasetId={state.datasetId} analysisId={state.analysisId} accountId={accountId} items={items}/></>}
       <section><h2>Импорт своего реплея</h2><p>Если файл недоступен у источника, выберите .dem, .dem.bz2 или .dem.zst. До 256 MiB; содержимое, матч и участник будут проверены.</p>
         <label>Файл реплея <input type="file" accept=".dem,.bz2,.zst" disabled={busy||active} onChange={e=>setFile(e.target.files?.[0]??null)}/></label>
         <button disabled={!file||busy||active} onClick={importFile}>Импортировать</button>
