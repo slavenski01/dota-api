@@ -71,17 +71,22 @@ td:nth-child(6) { min-width: 220px; }
 .episode-context > section { min-width: 0; }
 .episode-map { min-width: 0; }
 .map-surface { position: relative; aspect-ratio: 1; margin: 24px 0 12px; isolation: isolate; }
-.map-surface img { display: block; width: 100%; height: 100%; border-radius: 8px; }
-.map-marker { position: absolute; width: 28px; height: 28px; padding: 0; margin: 0; transform: translate(-50%, -50%); border-radius: 50%; border: 2px solid #fff; font-weight: 700; font-size: 13px; line-height: 24px; box-shadow: 0 1px 5px #000; }
-.map-marker.radiant { background: #b4d78c; color: #101716; }
-.map-marker.dire { background: #eaa88c; color: #28170f; border-radius: 6px; }
-.map-marker.dead { background: #303833; color: white; border-style: dashed; }
+.map-surface > img { display: block; width: 100%; height: 100%; border-radius: 8px; }
+.hero-portrait { display: inline-flex; flex: 0 0 32px; width: 32px; height: 32px; align-items: center; justify-content: center; vertical-align: middle; border-radius: inherit; overflow: hidden; background: #101716; }
+.hero-portrait img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.hero-fallback { display: block; max-width: 100%; padding: 1px; overflow: hidden; text-overflow: ellipsis; color: #fff; font: bold 10px/1.2 Arial, sans-serif; }
+.map-marker { display: flex; align-items: center; justify-content: center; position: absolute; width: 38px; height: 38px; padding: 0; margin: 0; transform: translate(-50%, -50%); border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1px #101716, 0 2px 5px #000; background: #101716; }
+.map-marker.radiant { border-color: #b4e578; }
+.map-marker.dire { border-color: #ffab8c; border-radius: 5px; }
+.map-marker.dead { border-style: dashed; }
+.map-marker.dead .hero-portrait img { filter: saturate(.5); }
+.map-death { position: absolute; right: -6px; bottom: -7px; width: 17px; height: 17px; background: #101716; color: #fff; border: 1px solid #fff; border-radius: 50%; font: bold 17px/14px Arial, sans-serif; }
 .map-marker[aria-pressed="true"] { outline: 3px solid #fff; outline-offset: 3px; z-index: 2; }
 .map-marker:focus-visible { outline: 3px solid #fff; outline-offset: 5px; z-index: 3; }
 .map-legend { font-size: 13px; }
 .radiant-label { color: #b4d78c; }.dire-label { color: #eaa88c; }
 .map-roster { display: flex; gap: 6px; flex-wrap: wrap; }
-.map-roster button { background: #18221e; color: #bac5bf; font-size: 12px; margin: 0; padding: 6px 8px; }
+.map-roster button { background: #18221e; color: #bac5bf; font-size: 12px; margin: 0; padding: 6px 8px; min-height: 44px; text-align: left; }
 .map-roster button[aria-pressed="true"] { background: #b4d78c; color: #101716; }
 #episode-time { display: block; width: 100%; padding: 12px 0; accent-color: #b4d78c; }
 #match-time { display: block; width: 100%; padding: 12px 0; accent-color: #b4d78c; }

@@ -7,20 +7,27 @@ import { createServer } from 'node:net';
 import { mkdtemp, rm, access } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { openDatabase,migrate,saveDataset,LocalStorage,storeStateSegments } from '@dota/persistence';
+import { openDatabase,migrate,saveDataset,LocalStorage,storeStateSegments,transaction } from '@dota/persistence';
+import { analysisHandler, defaultVersions } from '@dota/jobs';
 import { fixture,base,death } from './fixtures/analysis.mjs';
 const unknown={status:'unknown',value:null,reason:'Unverified'};
 test('production full-match HTTP without episodes: direct links, frames, filters and isolation',async()=>{
  const pool=openDatabase(process.env.TEST_DATABASE_URL),root=await mkdtemp('/tmp/dota-explorer-web-');let web;
  try{
-  await migrate(pool);const ctx=fixture(Array.from({length:205},(_,i)=>death(`death-${String(i).padStart(3,'0')}`,i*5,i%2?128:0)));
+  await migrate(pool);const ctx=fixture(Array.from({length:205},(_,i)=>death(`death-${String(i).padStart(3,'0')}`,i*5,i>=114&&i<=128?0:i%2?128:0)));
   ctx.records.filter(r=>r.kind==='participant').forEach((p,i)=>p.heroId=String([1,2,3,4,5,6,7,8,9,10][i]));
   const samples=[];
   for(let time=-30;time<=1200;time+=5)for(const slot of [0,1,2,3,4,128,129,130,131,132])samples.push({...base('hero_state',`s-${slot}-${time}`),provenance:{...base('hero_state','x').provenance,sourceVersion:'normalized-v2/clarity-5.0.1/protobuf-7.1'},
    playerSlot:slot,gameTimeSeconds:time,tick:null,perspective:{mode:'omniscient'},position:{status:'known',value:{x:(slot<128?-1:1)*(3000+slot%5*200)-time,y:slot%5*900-1800,z:0,coordinateSystem:'world',mapVersion:null},observedAtSeconds:time},
    hp:{status:'known',value:Math.max(0,1200-time),observedAtSeconds:time},mana:{status:'known',value:400,observedAtSeconds:time},alive:{status:'known',value:true,observedAtSeconds:time},inventory:unknown,visibility:unknown,resources:unknown,lastKnownPosition:null,coverageIds:[]});
+  // A dead hero remains identifiable; two heroes share a position and must be selectable via the roster.
+  for (const sample of samples) {
+    if (sample.gameTimeSeconds === 600 && sample.playerSlot === 0) sample.alive.value = false;
+    if (sample.gameTimeSeconds === 600 && sample.playerSlot === 1) sample.position = { ...samples.find(s=>s.gameTimeSeconds===600&&s.playerSlot===0).position };
+    if (sample.gameTimeSeconds >= 1100 && sample.playerSlot === 132) sample.position = unknown;
+  }
   await saveDataset(pool,{id:'explore-web',matchId:'1',parserRunId:null,normalizationVersion:'fixture',inputSha256:'a'.repeat(64),versions:{}},[...ctx.records.map(r=>r.kind==='coverage'?{...r,datasetId:'explore-web'}:r),...samples]);
-  await pool.query('INSERT INTO dota.dataset_checks VALUES ($1,$2,$3)',['explore-web',ctx.validation.version,{...ctx.validation,datasetId:'explore-web'}]);
+  await pool.query('INSERT INTO dota.dataset_checks VALUES ($1,$2,$3)',['explore-web',ctx.validation.version,{...ctx.validation,datasetId:'explore-web',coverage:ctx.validation.coverage.map(c=>({...c,datasetId:'explore-web'}))}]);
   await storeStateSegments(pool,new LocalStorage(root),'explore-web',samples);
   const socket=createServer().listen(0,'127.0.0.1');await once(socket,'listening');const port=socket.address().port;await new Promise(r=>socket.close(r));
   web=spawn(process.execPath,[resolve('node_modules/next/dist/bin/next'),'start','--hostname','127.0.0.1','--port',String(port)],{cwd:resolve('apps/web'),env:{...process.env,DATABASE_URL:process.env.TEST_DATABASE_URL,STORAGE_ROOT:root,NEXT_TELEMETRY_DISABLED:'1'},stdio:['ignore','pipe','pipe']});
@@ -52,6 +59,15 @@ test('production full-match HTTP without episodes: direct links, frames, filters
   assert.equal((await fetch(notesUrl.replace('accountId=1','accountId=999'))).status,404);
   const path='/matches/1/explore?accountId=1&datasetId=explore-web&time=600&hero=128&mode=retrospective';
   assert.equal((await fetch(baseUrl+path)).status,200);
-  if(process.env.EXPLORER_PREVIEW_GATE){console.log(`Explorer preview: ${baseUrl}${path}`);while(true){try{await access(process.env.EXPLORER_PREVIEW_GATE);break;}catch{}await delay(500);}}
+  if(process.env.EXPLORER_PREVIEW_GATE){
+    const output=await analysisHandler(pool)({row:{dataset_id:'explore-web',account_id:'1',analysis_options:null,versions:await defaultVersions()},signal:new AbortController().signal});
+    await transaction(pool,output.commit);
+    const episodes=(await pool.query("SELECT id,payload FROM dota.records WHERE kind='episode' AND dataset_id='explore-web'")).rows;
+    const episode=episodes.find(e=>e.payload.window.startSeconds<=600&&e.payload.window.endSeconds>=600);
+    assert.ok(episode,'Preview needs an episode at 600 seconds');
+    console.log(`Explorer preview: ${baseUrl}${path}`);
+    console.log(`Episode preview: ${baseUrl}/matches/1/episodes/${episode.id}?accountId=1&datasetId=explore-web&mode=retrospective&time=600`);
+    while(true){try{await access(process.env.EXPLORER_PREVIEW_GATE);break;}catch{}await delay(500);}
+  }
  }finally{if(web&&web.exitCode===null){const ended=once(web,'exit');web.kill('SIGTERM');await ended;}await pool.end();await rm(root,{recursive:true,force:true});}
 });

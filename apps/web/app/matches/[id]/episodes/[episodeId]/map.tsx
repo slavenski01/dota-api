@@ -2,14 +2,15 @@
 import { useState } from "react";
 import type { EpisodeFrame } from "@dota/jobs";
 import { gameTime } from "../../../../../lib/game-time";
-import heroes from "../../../../../lib/heroes.json";
+import { heroName } from "../../../../../lib/hero-catalog";
+import HeroPortrait from "../../../../components/hero-portrait";
 
 export default function EpisodeMap({ frame, selectedSlot, select }: { frame: Pick<EpisodeFrame, "states" | "heroes" | "time" | "map" | "mode" | "playerSlot">; selectedSlot: number | undefined; select: (slot: number) => void }) {
   const [failed, setFailed] = useState(false);
   const points = frame.states.filter(s => s.mapPosition !== null);
   const label = (slot: number) => {
     const id = frame.heroes.find(h => h.playerSlot === slot)?.heroId;
-    return (heroes as Record<string,string>)[String(id)] ?? (id ? `Герой ${id}` : "Герой неизвестен");
+    return heroName(id);
   };
   const number = (slot: number) => slot < 128 ? slot + 1 : slot - 128 + 6;
   return <section className="episode-map" aria-label="Карта эпизода"><h2>Карта · {gameTime(frame.time)}</h2>
@@ -21,10 +22,14 @@ export default function EpisodeMap({ frame, selectedSlot, select }: { frame: Pic
         const description = `${label(row.playerSlot)} · ${row.playerSlot < 128 ? "Radiant" : "Dire"} · наблюдение ${gameTime(row.state!.gameTimeSeconds)}${dead ? " · умирает / мёртв" : ""}`;
         return <button key={row.playerSlot} type="button" className={`map-marker ${row.playerSlot < 128 ? "radiant" : "dire"}${dead ? " dead" : ""}`}
           style={{left:`${row.mapPosition!.x}%`,top:`${row.mapPosition!.y}%`}} data-map-slot={row.playerSlot}
-          aria-label={description} aria-pressed={selectedSlot === row.playerSlot} title={description} onClick={() => select(row.playerSlot)}>{dead ? "×" : number(row.playerSlot)}</button>;
+          aria-label={description} aria-pressed={selectedSlot === row.playerSlot} title={description} onClick={() => select(row.playerSlot)}>
+          <HeroPortrait heroId={frame.heroes.find(h => h.playerSlot === row.playerSlot)?.heroId}/>
+          {dead && <span className="map-death" aria-hidden="true">×</span>}
+        </button>;
       })}
     </div>}
-    <p className="map-legend"><span className="radiant-label">● Radiant: 1–5</span> · <span className="dire-label">● Dire: 6–10</span> · × умирает / мёртв</p>
+    <p className="map-legend"><span className="radiant-label">○ Radiant: круглая рамка</span> · <span className="dire-label">□ Dire: квадратная рамка</span> · × умирает / мёртв · белая обводка — выбранный герой</p>
+    <p className="muted">Если герои перекрываются, выберите нужного в списке под картой. Маркеры и список доступны с клавиатуры.</p>
     <p>{frame.mode === "decision" ? "Позиции неизвестны: командный обзор не подтверждён. Маркеры полного обзора здесь не показываются." : `На карте ${points.length} из ${frame.heroes.length} героев. Показаны последние наблюдения возрастом до 5 секунд, без интерполяции.`}</p>
     {frame.mode === "retrospective" && points.length === 0 && <p className="muted">Нет пригодных позиций в этом кадре: пропуск, выход за границы подложки или старый набор. Для старого набора запустите повторный разбор на странице матча.</p>}
     <div className="map-roster" aria-label="Герои на карте">{frame.heroes.map(h => <button key={h.playerSlot} type="button" aria-pressed={h.playerSlot === selectedSlot} onClick={() => select(h.playerSlot)}>
