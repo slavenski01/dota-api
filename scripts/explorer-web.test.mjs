@@ -4,7 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer } from 'node:net';
-import { mkdtemp, rm, access } from 'node:fs/promises';
+import { createServer as createHttpServer, request as httpRequest } from 'node:http';
+import { mkdtemp, rm, access, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { openDatabase,migrate,saveDataset,LocalStorage,storeStateSegments,transaction } from '@dota/persistence';
@@ -12,7 +13,7 @@ import { analysisHandler, defaultVersions } from '@dota/jobs';
 import { fixture,base,death } from './fixtures/analysis.mjs';
 const unknown={status:'unknown',value:null,reason:'Unverified'};
 test('production full-match HTTP without episodes: direct links, frames, filters and isolation',async()=>{
- const pool=openDatabase(process.env.TEST_DATABASE_URL),root=await mkdtemp('/tmp/dota-explorer-web-');let web;
+ const pool=openDatabase(process.env.TEST_DATABASE_URL),root=await mkdtemp('/tmp/dota-explorer-web-');let web, iconPreview;
  try{
   await migrate(pool);const ctx=fixture(Array.from({length:205},(_,i)=>death(`death-${String(i).padStart(3,'0')}`,i*5,i>=114&&i<=128?0:i%2?128:0)));
   ctx.records.filter(r=>r.kind==='participant').forEach((p,i)=>p.heroId=String([1,2,3,4,5,6,7,8,9,10][i]));
@@ -59,7 +60,31 @@ test('production full-match HTTP without episodes: direct links, frames, filters
   assert.equal((await fetch(notesUrl.replace('accountId=1','accountId=999'))).status,404);
   const path='/matches/1/explore?accountId=1&datasetId=explore-web&time=600&hero=128&mode=retrospective';
   assert.equal((await fetch(baseUrl+path)).status,200);
+  const heroCatalog=JSON.parse(await readFile('apps/web/lib/hero-catalog.json','utf8'));
+  const iconResponse=await fetch(baseUrl+heroCatalog.heroes['1'].icon);
+  assert.equal(iconResponse.status,200);
+  assert.equal(iconResponse.headers.get('content-type'),'image/png');
+  assert.match(iconResponse.headers.get('cache-control'),/max-age=31536000.*immutable/);
+  assert.deepEqual(Buffer.from(await iconResponse.arrayBuffer()),await readFile('apps/web/public'+heroCatalog.heroes['1'].icon));
+  assert.equal((await fetch(baseUrl+'/heroes/9999.missing.png')).status,404);
   if(process.env.EXPLORER_PREVIEW_GATE){
+    const edgeId='icons-unknown';
+    const edgeRecords=ctx.records.map(r=>r.kind==='coverage'?{...r,datasetId:edgeId}:r.kind==='participant'&&r.playerSlot===132?{...r,heroId:'9999'}:r);
+    await saveDataset(pool,{id:edgeId,matchId:'1',parserRunId:null,normalizationVersion:'fixture',inputSha256:'b'.repeat(64),versions:{}},[...edgeRecords,...samples]);
+    await pool.query('INSERT INTO dota.dataset_checks VALUES ($1,$2,$3)',[edgeId,ctx.validation.version,{...ctx.validation,datasetId:edgeId,coverage:ctx.validation.coverage.map(c=>({...c,datasetId:edgeId}))}]);
+    await storeStateSegments(pool,new LocalStorage(root),edgeId,samples);
+    // Browser-only failure injection at a separate loopback origin. Production assets remain untouched.
+    const imageRequests=new Map();
+    iconPreview=createHttpServer((req,res)=>{
+      if(req.url.startsWith('/heroes/')){
+        imageRequests.set(req.url,(imageRequests.get(req.url)??0)+1);
+        if(req.url===heroCatalog.heroes['2'].icon){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Missing preview icon');return;}
+      }
+      const proxy=httpRequest(baseUrl+req.url,{method:req.method,headers:req.headers},upstream=>{res.writeHead(upstream.statusCode,upstream.headers);upstream.pipe(res);});
+      proxy.on('error',()=>{res.writeHead(502);res.end();});req.pipe(proxy);
+    }).listen(0,'127.0.0.1');
+    await once(iconPreview,'listening');
+    console.log(`Icon failure preview: http://127.0.0.1:${iconPreview.address().port}${path.replace('explore-web',edgeId)}`);
     const output=await analysisHandler(pool)({row:{dataset_id:'explore-web',account_id:'1',analysis_options:null,versions:await defaultVersions()},signal:new AbortController().signal});
     await transaction(pool,output.commit);
     const episodes=(await pool.query("SELECT id,payload FROM dota.records WHERE kind='episode' AND dataset_id='explore-web'")).rows;
@@ -68,6 +93,7 @@ test('production full-match HTTP without episodes: direct links, frames, filters
     console.log(`Explorer preview: ${baseUrl}${path}`);
     console.log(`Episode preview: ${baseUrl}/matches/1/episodes/${episode.id}?accountId=1&datasetId=explore-web&mode=retrospective&time=600`);
     while(true){try{await access(process.env.EXPLORER_PREVIEW_GATE);break;}catch{}await delay(500);}
+    console.log('Icon preview requests:',JSON.stringify(Object.fromEntries(imageRequests)));
   }
- }finally{if(web&&web.exitCode===null){const ended=once(web,'exit');web.kill('SIGTERM');await ended;}await pool.end();await rm(root,{recursive:true,force:true});}
+ }finally{if(iconPreview){iconPreview.closeAllConnections();await new Promise(r=>iconPreview.close(r));}if(web&&web.exitCode===null){const ended=once(web,'exit');web.kill('SIGTERM');await ended;}await pool.end();await rm(root,{recursive:true,force:true});}
 });

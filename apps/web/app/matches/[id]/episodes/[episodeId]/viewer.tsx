@@ -4,12 +4,12 @@ import Link from "next/link";
 import type { EpisodeFrame, ViewerState } from "@dota/jobs";
 import { api } from "../../../../../lib/source-errors";
 import { gameTime } from "../../../../../lib/game-time";
-import heroes from "../../../../../lib/heroes.json";
+import { heroName as hero } from "../../../../../lib/hero-catalog";
+import { HeroPreloads } from "../../../../components/hero-portrait";
 import resources from "../../../../../../../services/replay-parser/src/main/resources/resource-ids.json";
 import EpisodeReviews from "./reviews";
 import EpisodeMap from "./map";
 const names = new Map(Object.entries(resources.items).map(([name,id]) => [id, name.replace(/^item_/, "").replaceAll("_", " ")]));
-const hero = (id: string | null) => (heroes as Record<string,string>)[String(id)] ?? (id ? `Герой ${id}` : "Герой неизвестен");
 const numeric = (field: ViewerState["hp"] | undefined) => field?.status === "known" ? new Intl.NumberFormat("ru-RU",{maximumFractionDigits:1}).format(field.value) : "неизвестно";
 export default function EpisodeViewer({ matchId, datasetId, episodeId, accountId, initialMode, initialTime }: { matchId: string; datasetId: string; episodeId: string; accountId: string; initialMode: string; initialTime: string }) {
   const [mode, setMode] = useState(initialMode || "decision"), [time, setTime] = useState<number | null>(initialTime ? Number(initialTime) : null);
@@ -48,6 +48,7 @@ export default function EpisodeViewer({ matchId, datasetId, episodeId, accountId
     </section>
     {!frame && !error && <p role="status">Загрузка контекста…</p>}
     {frame && <>
+      <HeroPreloads heroIds={frame.heroes.map(h => h.heroId)}/>
       <p className="notice">{frame.limitations[0]}</p>
       <div className="episode-context"><EpisodeMap frame={frame} selectedSlot={slot} select={setSelectedSlot}/>
         <section><h2>Состояние героя</h2><label>Герой <select aria-label="Герой для просмотра" value={slot} onChange={e=>setSelectedSlot(Number(e.target.value))}>{frame.heroes.map(h=><option key={h.playerSlot} value={h.playerSlot}>{hero(h.heroId)} · {h.playerSlot < 128 ? "Radiant" : "Dire"}{h.playerSlot === frame.playerSlot ? " · выбранный игрок" : ""}</option>)}</select></label>

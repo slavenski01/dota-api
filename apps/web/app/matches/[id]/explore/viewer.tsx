@@ -6,13 +6,13 @@ import type { MatchExplorer, MatchFrame, MatchOverview, ViewerState } from "@dot
 import type { GameEvent } from "@dota/contracts";
 import { api } from "../../../../lib/source-errors";
 import { gameTime } from "../../../../lib/game-time";
-import heroes from "../../../../lib/heroes.json";
+import { heroName as hero } from "../../../../lib/hero-catalog";
+import HeroPortrait, { HeroPreloads } from "../../../components/hero-portrait";
 import resources from "../../../../../../services/replay-parser/src/main/resources/resource-ids.json";
 import EpisodeMap from "../episodes/[episodeId]/map";
 import { Chart } from "../overview";
 import MatchNotes from "./notes";
 
-const hero = (id: string | null | undefined) => (heroes as Record<string,string>)[String(id)] ?? (id ? `Герой ${id}` : "Неизвестный герой");
 const itemNames = new Map(Object.entries(resources.items).map(([name,id]) => [id,name.replace(/^item_/, "").replaceAll("_", " ")]));
 const actions = { purchased: "покупка", assembled: "сборка", received: "получение", used: "применение" };
 function useRead<T>(url: string | null, retry: number) {
@@ -65,6 +65,7 @@ export default function Explorer({ matchId }: { matchId: string }) {
     {meta?.value && !view && <p role="alert">Набор относится к другому матчу.</p>}
     {errors.length>0 && <p className="notice error" role="alert">{[...new Set(errors)].join(" ")} <button onClick={()=>setRetry(n=>n+1)}>Повторить загрузку</button></p>}
     {view && <>
+      <HeroPreloads heroIds={view.players.map(p => p.heroId)}/>
       <p className="muted">Игрок {accountId} · {view.match.radiantWin===null ? "результат неизвестен" : view.match.radiantWin ? "Победа Radiant" : "Победа Dire"} · длительность {view.match.durationSeconds===null?"неизвестна":gameTime(view.match.durationSeconds)} · патч {view.match.patch ?? "неизвестен"}. {view.limitations.join(" ")}</p>
       {!valid && <p role="alert">Некорректные время, герой или перспектива в ссылке. <button onClick={()=>navigate({time:"0",hero:String(view.player.playerSlot),mode:"retrospective"})}>Открыть начало игры</button></p>}
       <section className="explorer-controls"><h2>Время и перспектива</h2><div className="filters">
@@ -90,7 +91,7 @@ export default function Explorer({ matchId }: { matchId: string }) {
         {eventsRead?.value ? <><p className="muted">{eventsRead.value.limitation}</p>{eventsRead.value.events.length ? <ul className="event-list">{eventsRead.value.events.map(e=><li key={e.id}><button onClick={()=>go(e.gameTimeSeconds)}>{gameTime(e.gameTimeSeconds)} · {label(e)}</button></li>)}</ul>:<p>Доступных событий на этой странице нет. Это не доказывает их отсутствие в игре.</p>}
           <div className="history-actions">{cursor&&<button onClick={()=>navigate({cursor:null})}>С начала журнала</button>}{eventsRead.value.nextCursor&&<button onClick={()=>navigate({cursor:eventsRead.value!.nextCursor})}>Следующие события</button>}</div></>:valid&&!eventsRead?.error&&<p role="status">Загрузка событий…</p>}
       </section>
-      {mode==='retrospective' && <><section><h2>Статистика десяти игроков</h2><p>Итог матча, не оценка качества решений. Выбор строки переключает героя на карте и графиках.</p><div className="table-scroll" tabIndex={0}><table><caption>Полный ретроспективный обзор · неизвестные значения не заменяются нулями</caption><thead><tr><th>Герой / команда</th><th>K / D / A</th><th>Добивания / денаи</th><th>GPM / XPM</th><th>Урон героям</th><th>Урон строениям</th><th>Роль</th></tr></thead><tbody>{view.players.map(p=><tr key={p.playerSlot} aria-selected={slot===p.playerSlot}><td><button onClick={()=>navigate({hero:String(p.playerSlot)})}>{hero(p.heroId)}</button><small>{p.team} · слот {p.playerSlot}{p.playerSlot===view.player.playerSlot?' · выбранный игрок':''}</small></td><td>{p.statistics.kills??'—'} / {p.statistics.deaths??'—'} / {p.statistics.assists??'—'}</td><td>{p.statistics.lastHits??'—'} / {p.statistics.denies??'—'}</td><td>{p.statistics.gpm??'—'} / {p.statistics.xpm??'—'}</td><td>{p.statistics.heroDamage??'—'}</td><td>{p.statistics.towerDamage??'—'}</td><td>{p.role?`${p.role.position} (${p.role.source})`:'неизвестно'}</td></tr>)}</tbody></table></div></section>
+      {mode==='retrospective' && <><section><h2>Статистика десяти игроков</h2><p>Итог матча, не оценка качества решений. Выбор строки переключает героя на карте и графиках.</p><div className="table-scroll" tabIndex={0}><table><caption>Полный ретроспективный обзор · неизвестные значения не заменяются нулями</caption><thead><tr><th>Герой / команда</th><th>K / D / A</th><th>Добивания / денаи</th><th>GPM / XPM</th><th>Урон героям</th><th>Урон строениям</th><th>Роль</th></tr></thead><tbody>{view.players.map(p=><tr key={p.playerSlot} aria-selected={slot===p.playerSlot}><td><button className={`hero-choice ${p.team}`} aria-pressed={slot===p.playerSlot} onClick={()=>navigate({hero:String(p.playerSlot)})}><HeroPortrait heroId={p.heroId}/><span>{hero(p.heroId)}</span></button><small>{p.team} · слот {p.playerSlot}{p.playerSlot===view.player.playerSlot?' · выбранный игрок':''}</small></td><td>{p.statistics.kills??'—'} / {p.statistics.deaths??'—'} / {p.statistics.assists??'—'}</td><td>{p.statistics.lastHits??'—'} / {p.statistics.denies??'—'}</td><td>{p.statistics.gpm??'—'} / {p.statistics.xpm??'—'}</td><td>{p.statistics.heroDamage??'—'}</td><td>{p.statistics.towerDamage??'—'}</td><td>{p.role?`${p.role.position} (${p.role.source})`:'неизвестно'}</td></tr>)}</tbody></table></div></section>
       <section><h2>Ресурсы: {hero(selected?.heroId)}</h2>{seriesRead?.value?<><Chart points={seriesRead.value.series} field="hp" label="Здоровье (HP)"/><Chart points={seriesRead.value.series} field="mana" label="Мана"/></>:valid&&!seriesRead?.error&&<p role="status">Загрузка графиков…</p>}<p className="muted">Рядов золота, опыта и добиваний пока нет. Покупка предмета не означает доставку герою.</p></section></>}
     </>}
   </main>;

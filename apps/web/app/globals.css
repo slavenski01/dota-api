@@ -88,6 +88,12 @@ td:nth-child(6) { min-width: 220px; }
 .map-roster { display: flex; gap: 6px; flex-wrap: wrap; }
 .map-roster button { background: #18221e; color: #bac5bf; font-size: 12px; margin: 0; padding: 6px 8px; min-height: 44px; text-align: left; }
 .map-roster button[aria-pressed="true"] { background: #b4d78c; color: #101716; }
+.hero-choice { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; text-align: left; white-space: normal; }
+.hero-choice > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.hero-choice small { display: block; font-size: 10px; color: inherit; line-height: 1.5; }
+.hero-choice.radiant { border-left: 3px solid #b4e578; }
+.hero-choice.dire { border-left: 3px solid #ffab8c; }
+.hero-choice[aria-pressed="true"] { outline: 2px solid #fff; outline-offset: 1px; }
 #episode-time { display: block; width: 100%; padding: 12px 0; accent-color: #b4d78c; }
 #match-time { display: block; width: 100%; padding: 12px 0; accent-color: #b4d78c; }
 .explorer-controls > label { display: block; margin-top: 24px; }

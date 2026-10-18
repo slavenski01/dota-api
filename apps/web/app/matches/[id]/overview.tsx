@@ -4,10 +4,9 @@ import type { MatchOverview } from "@dota/jobs";
 import type { MatchSummary } from "@dota/persistence";
 import { api } from "../../../lib/source-errors";
 import { gameTime } from "../../../lib/game-time";
-import heroes from "../../../lib/heroes.json";
+import { heroName } from "../../../lib/hero-catalog";
 const unknown = "неизвестно";
 const date = (value: string | null) => value ? new Intl.DateTimeFormat("ru-RU", { timeZone: "Europe/Moscow", dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) + " МСК" : unknown;
-const heroName = (id: string | number | null) => (heroes as Record<string, string>)[String(id)] ?? (id === null ? unknown : `Герой ${id}`);
 export function Chart({ points, field, label }: { points: MatchOverview["series"]; field: "hp" | "mana"; label: string }) {
   const known = points.filter(p => p[field] !== null);
   if (!known.length) return <section><h3>{label}</h3><p>Наблюдения отсутствуют. Значения не восстановлены из итоговой статистики.</p></section>;

@@ -12,7 +12,6 @@ export default function EpisodeMap({ frame, selectedSlot, select }: { frame: Pic
     const id = frame.heroes.find(h => h.playerSlot === slot)?.heroId;
     return heroName(id);
   };
-  const number = (slot: number) => slot < 128 ? slot + 1 : slot - 128 + 6;
   return <section className="episode-map" aria-label="Карта эпизода"><h2>Карта · {gameTime(frame.time)}</h2>
     <p className="muted">{frame.map.reason}</p>
     {failed ? <p role="alert">Не удалось загрузить подложку. Состояния героев доступны в соседней панели.</p> : <div className="map-surface">
@@ -32,8 +31,8 @@ export default function EpisodeMap({ frame, selectedSlot, select }: { frame: Pic
     <p className="muted">Если герои перекрываются, выберите нужного в списке под картой. Маркеры и список доступны с клавиатуры.</p>
     <p>{frame.mode === "decision" ? "Позиции неизвестны: командный обзор не подтверждён. Маркеры полного обзора здесь не показываются." : `На карте ${points.length} из ${frame.heroes.length} героев. Показаны последние наблюдения возрастом до 5 секунд, без интерполяции.`}</p>
     {frame.mode === "retrospective" && points.length === 0 && <p className="muted">Нет пригодных позиций в этом кадре: пропуск, выход за границы подложки или старый набор. Для старого набора запустите повторный разбор на странице матча.</p>}
-    <div className="map-roster" aria-label="Герои на карте">{frame.heroes.map(h => <button key={h.playerSlot} type="button" aria-pressed={h.playerSlot === selectedSlot} onClick={() => select(h.playerSlot)}>
-      {number(h.playerSlot)}. {label(h.playerSlot)}{h.playerSlot === frame.playerSlot ? " · ваш игрок" : ""}{points.some(p => p.playerSlot === h.playerSlot) ? "" : " · нет позиции"}
+    <div className="map-roster" aria-label="Герои на карте">{frame.heroes.map(h => <button key={h.playerSlot} type="button" className={`hero-choice ${h.playerSlot < 128 ? "radiant" : "dire"}`} aria-pressed={h.playerSlot === selectedSlot} onClick={() => select(h.playerSlot)}>
+      <HeroPortrait heroId={h.heroId}/><span>{label(h.playerSlot)}<small>{h.playerSlot < 128 ? "Radiant" : "Dire"} · слот {h.playerSlot}{h.playerSlot === frame.playerSlot ? " · ваш игрок" : ""}{points.some(p => p.playerSlot === h.playerSlot) ? "" : " · нет позиции"}</small></span>
     </button>)}</div>
     <p className="muted">Туман войны не восстановлен. Полный обзор не доказывает, что игрок видел угрозу. Подложка: <a href="https://github.com/odota/web/blob/7ccb42bd73bba450d3768ddf38aabc0e6ad9cb0c/public/assets/images/dota2/map/detailed_740.webp">OpenDota 7.40</a> · Dota 2 © Valve.</p>
   </section>;
