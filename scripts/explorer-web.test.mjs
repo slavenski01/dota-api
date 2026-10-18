@@ -8,7 +8,7 @@ import { createServer as createHttpServer, request as httpRequest } from 'node:h
 import { mkdtemp, rm, access, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { openDatabase,migrate,saveDataset,LocalStorage,storeStateSegments,transaction } from '@dota/persistence';
+import { openDatabase,migrate,saveDataset,LocalStorage,storeStateSegments,prepareMotionSegments,transaction } from '@dota/persistence';
 import { analysisHandler, defaultVersions } from '@dota/jobs';
 import { fixture,base,death } from './fixtures/analysis.mjs';
 const unknown={status:'unknown',value:null,reason:'Unverified'};
@@ -30,6 +30,21 @@ test('production full-match HTTP without episodes: direct links, frames, filters
   await saveDataset(pool,{id:'explore-web',matchId:'1',parserRunId:null,normalizationVersion:'fixture',inputSha256:'a'.repeat(64),versions:{}},[...ctx.records.map(r=>r.kind==='coverage'?{...r,datasetId:'explore-web'}:r),...samples]);
   await pool.query('INSERT INTO dota.dataset_checks VALUES ($1,$2,$3)',['explore-web',ctx.validation.version,{...ctx.validation,datasetId:'explore-web',coverage:ctx.validation.coverage.map(c=>({...c,datasetId:'explore-web'}))}]);
   await storeStateSegments(pool,new LocalStorage(root),'explore-web',samples);
+  if(process.env.EXPLORER_PREVIEW_GATE){
+    const tracks=[];
+    for(let bucket=-1;bucket<=40;bucket++)for(const slot of [0,1,2,3,4,128,129,130,131,132]){
+      const rows=[];
+      for(let i=0;i<120;i++){
+        const time=bucket*30+i/4;if(time>1200)continue;
+        const hidden=time>=1100&&slot===132,alive=!(slot===0&&time>=600&&time<605);
+        const overlap=slot===1&&time===600;
+        const x=(slot<128?-1:1)*(3000+slot%5*200)-time+(time>=610?1500:0);
+        rows.push({time,tick:10000+Math.round((time+30)*30),x:hidden?null:overlap?-3600:x,y:hidden?null:overlap?-1800:slot%5*900-1800,alive,breakBefore:hidden?'unknown':time===610?'jump':slot===0&&(time===600||time===605)?'life':slot===1&&(time===600||time===600.25)?'jump':null});
+      }
+      if(rows.length)tracks.push({...base('hero_motion',`motion-${slot}-${bucket}`),provenance:{...base('hero_motion','x').provenance,sourceVersion:'normalized-v2/clarity-5.0.1/protobuf-7.1'},playerSlot:slot,formatVersion:'motion-v1',stepSeconds:0.25,samples:rows});
+    }
+    await transaction(pool,await prepareMotionSegments(new LocalStorage(root),'explore-web','1',tracks));
+  }
   const socket=createServer().listen(0,'127.0.0.1');await once(socket,'listening');const port=socket.address().port;await new Promise(r=>socket.close(r));
   web=spawn(process.execPath,[resolve('node_modules/next/dist/bin/next'),'start','--hostname','127.0.0.1','--port',String(port)],{cwd:resolve('apps/web'),env:{...process.env,DATABASE_URL:process.env.TEST_DATABASE_URL,STORAGE_ROOT:root,NEXT_TELEMETRY_DISABLED:'1'},stdio:['ignore','pipe','pipe']});
   web.stdout.on('data',()=>{});web.stderr.on('data',()=>{});

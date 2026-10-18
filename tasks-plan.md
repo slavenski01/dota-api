@@ -1,10 +1,10 @@
 # План задач: персональная аналитика матчей Dota 2
 
-Дата: 18 октября 2026 года. Версия плана: 1.35.
+Дата: 18 октября 2026 года. Версия плана: 1.36.
 
 Проект: `/Users/user/Projects/dota-api`.
 
-Этот документ предназначен для реализации в отдельных сессиях. При создании плана в проекте находился только `.agents/skills/dota-match-analysis`. Сейчас реализованы web, worker, Kotlin CLI, контракты, база, Storage, очередь, профиль, история, импорт и нормализация реплеев, метрики и отбор эпизодов. Задачи E00–E07 выполнены с явно описанными ограничениями данных. Всего 59 задач: 44 DONE, 9 TODO, 6 SKIPPED. E13 завершён; далее E14 → E08 → E15. Архитектура и команды запуска — в [README](README.md); ограничения нормализации — в [описании E05](docs/normalization.md). Мировые координаты подтверждены и доступны для ретроспективной карты на приблизительной подложке 7.40. Cooldown/canUse и командная видимость остаются unknown; карта не разрешает оценивать решение по скрытой информации. E05 не снимает ограничения [матрицы E01-T04](docs/replay-capabilities.md).
+Этот документ предназначен для реализации в отдельных сессиях. При создании плана в проекте находился только `.agents/skills/dota-match-analysis`. Сейчас реализованы web, worker, Kotlin CLI, контракты, база, Storage, очередь, профиль, история, импорт и нормализация реплеев, метрики и отбор эпизодов. Задачи E00–E07 выполнены с явно описанными ограничениями данных. Всего 59 задач: 45 DONE, 8 TODO, 6 SKIPPED. E13 завершён; далее E14 → E08 → E15. Архитектура и команды запуска — в [README](README.md); ограничения нормализации — в [описании E05](docs/normalization.md). Мировые координаты подтверждены и доступны для ретроспективной карты на приблизительной подложке 7.40. Cooldown/canUse и командная видимость остаются unknown; карта не разрешает оценивать решение по скрытой информации. E05 не снимает ограничения [матрицы E01-T04](docs/replay-capabilities.md).
 
 ## 1. Цель и согласованный контур
 
@@ -596,7 +596,7 @@ Clarity — Java-библиотека, используемая из Kotlin. Jav
 
 #### E14-T04 — Сделать локальную перемотку и корректное сглаживание
 
-Статус: TODO. Зависимости: E14-T03.
+Статус: DONE. Зависимости: E14-T03.
 
 - Объём: отделить оперативное время ползунка от сохранения URL; отрисовывать координаты из кэша в цикле браузера. Определить допустимые соседние наблюдения, максимальный разрыв и признаки скачка; сглаживать только обычное движение в ретроспективе. При завершении перемотки сохранять точный момент, героя, набор и перспективу в ссылке.
 - Готово, когда: ползунок, подпись времени и маркеры реагируют согласованно без сетевых вспышек и возвратов назад. При телепорте, смерти, возрождении, неизвестной позиции, разрыве или большом скачке времени нет анимации вымышленного пути через карту; сомнительные участки не сглаживаются. Исходные наблюдения, показатели состояния и evidence сохраняют реальные времена; аналитика и контекст решения не читают визуально вычисленные точки. Проверены прямые ссылки, история браузера и смена перспективы во время перемотки.
@@ -1106,3 +1106,5 @@ E07-T02/T03/T04 и M2 закрыты в согласованном контур�
 | 2026-10-18 | E14-T02 — DONE | motion-v1: compact observations, discontinuity flags, immutable gzip segments, SHA-256 and bounded reads. Five real replays: 4.18–6.86 s, 850–993 MiB peak RSS, 1.12–2.12 MiB motion gzip. Selected 250 ms: R1 p95 error 13.54 vs 33.71/75.47 at 500/1000 ms. Kotlin build/tests, 59 contract checks, 5 persistence and 2 normalization checks pass, including real pipeline with Node heap 256 MiB. Old datasets remain immutable; repeat processing creates a new dataset. See docs/playback.md. | Next: E14-T03. |
 
 | 2026-10-18 | E14-T03 — DONE | Bounded playback-v1 API, 30-second windows with boundary observations, four-window/8 MiB cache and adjacent prefetch in both viewers. Context/version isolation, stale response rejection, decision mode without omniscient reads. API/cache tests and production build pass; browser confirmed local seeks and episode/mode transitions. Long R3: 103 windows, p50/p95 8.70/13.96 ms, max response 753984 bytes, cache 2388571 bytes, retained Node heap increase 2872264 bytes after GC. See docs/playback.md. | Next: E14-T04. |
+
+| 2026-10-18 | E14-T04 - DONE | Local rAF seek, URL commit on completed interaction, history and hero deep links in both viewers. Conservative visual interpolation; original states and evidence untouched. Motion tests and production build pass; browser verified fractional time, back navigation and perspective isolation. | Next: E14-T05. |

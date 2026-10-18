@@ -4,6 +4,8 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { MatchExplorer, MatchFrame, MatchOverview, ViewerState } from "@dota/jobs";
 import type { GameEvent } from "@dota/contracts";
+import { useLocalTime } from "../../../../lib/use-local-time";
+import { visualPositions } from "../../../../lib/visual-motion";
 import { usePlaybackFrame } from "../../../../lib/use-playback-frame";
 import { api } from "../../../../lib/source-errors";
 import { gameTime } from "../../../../lib/game-time";
@@ -35,7 +37,8 @@ export default function Explorer({ matchId }: { matchId: string }) {
   const meta = useRead<MatchExplorer>(datasetId && accountId ? url("match") : null,retry);
   const view = meta?.value?.match.matchId === matchId ? meta.value : undefined;
   const mode = search.get("mode") ?? "retrospective", rawTime = search.get("time"), rawSlot = search.get("hero");
-  const time = rawTime === null ? 0 : rawTime.trim() ? Number(rawTime) : NaN;
+  const timeline = useLocalTime(rawTime === null ? 0 : rawTime.trim() ? Number(rawTime) : NaN,JSON.stringify([matchId,datasetId,accountId,mode]));
+  const time = timeline.time;
   const slot = rawSlot === null ? view?.player.playerSlot : rawSlot.trim() ? Number(rawSlot) : NaN;
   const valid = view && ["decision","retrospective"].includes(mode) && Number.isFinite(time) && time >= view.window.startSeconds && time <= view.window.endSeconds && view.players.some(p=>p.playerSlot===slot);
   const frameRead = usePlaybackFrame<MatchFrame>({datasetId,accountId,matchId,mode,time,retry,enabled:!!valid});
@@ -45,10 +48,12 @@ export default function Explorer({ matchId }: { matchId: string }) {
   const seriesRead = useRead<{ series: MatchOverview["series"] }>(valid ? url("series",{mode,playerSlot:String(slot)}) : null,retry);
   function navigate(changes: Record<string,string | null>) {
     const next = new URL(window.location.href);
+    if(Number.isFinite(time))next.searchParams.set("time",String(time));
     for (const [key,value] of Object.entries(changes)) { if(value===null)next.searchParams.delete(key);else next.searchParams.set(key,value); }
-    window.history.replaceState(null,"",next); setCopied("");
+    if(next.href!==window.location.href)window.history.pushState(null,"",next); setCopied("");
   }
-  const go = (next: number) => { if(view)navigate({time:String(Math.max(view.window.startSeconds,Math.min(view.window.endSeconds,next)))}); };
+  const go = (next: number) => { if(view){const value=Math.max(view.window.startSeconds,Math.min(view.window.endSeconds,next));timeline.set(value);navigate({time:String(value)});} };
+  const commitScrub=()=>go(timeline.finish());
   const selected = view?.players.find(p=>p.playerSlot===slot), observation = frame?.states.find(s=>s.playerSlot===slot), state = observation?.state;
   const namedSlot = (value: number | null) => value === null ? "неизвестно" : hero(view?.players.find(p=>p.playerSlot===value)?.heroId);
   const label = (event: GameEvent) => {
@@ -76,13 +81,13 @@ export default function Explorer({ matchId }: { matchId: string }) {
         <label>Время, игровые секунды<input aria-label="Время, игровые секунды" type="number" step="any" min={view.window.startSeconds} max={view.window.endSeconds} value={Number.isFinite(time)?time:""} onChange={e=>{if(e.target.value.trim())navigate({time:e.target.value});}}/></label>
       </div>
       <label htmlFor="match-time">{Number.isFinite(time)?gameTime(time):"Время не задано"} · весь матч: {gameTime(view.window.startSeconds)}–{gameTime(view.window.endSeconds)}</label>
-      <input id="match-time" type="range" min={view.window.startSeconds} max={view.window.endSeconds} step="any" value={Number.isFinite(time)?time:0} aria-valuetext={Number.isFinite(time)?gameTime(time):"Неизвестно"} onChange={e=>go(Number(e.target.value))} onKeyDown={e=>{const d=e.key==='ArrowRight'||e.key==='ArrowUp'?1:e.key==='ArrowLeft'||e.key==='ArrowDown'?-1:0;if(d){e.preventDefault();go(time+d);}}}/>
+      <input id="match-time" type="range" min={view.window.startSeconds} max={view.window.endSeconds} step="any" value={Number.isFinite(time)?time:0} aria-valuetext={Number.isFinite(time)?gameTime(time):"Неизвестно"} onChange={e=>timeline.scrub(Number(e.target.value))} onPointerUp={commitScrub} onPointerCancel={commitScrub} onBlur={commitScrub} onKeyUp={commitScrub} onKeyDown={e=>{const d=e.key==='ArrowRight'||e.key==='ArrowUp'?1:e.key==='ArrowLeft'||e.key==='ArrowDown'?-1:0;if(d){e.preventDefault();go(time+d);}}}/>
       <div className="history-actions"><button onClick={()=>go(view.window.startSeconds)}>Начало записи</button><button disabled={!valid} onClick={()=>go(time-30)}>−30 сек</button><button disabled={!valid} onClick={()=>go(time-1)}>−1 сек</button><button disabled={!valid} onClick={()=>go(time+1)}>+1 сек</button><button disabled={!valid} onClick={()=>go(time+30)}>+30 сек</button><button onClick={()=>go(view.window.endSeconds)}>Конец записи</button></div>
       <button disabled={!valid} onClick={()=>{ const link=new URL(window.location.href);link.searchParams.set('time',String(time));link.searchParams.set('hero',String(slot));link.searchParams.set('mode',mode);void navigator.clipboard.writeText(link.href).then(()=>setCopied("Ссылка скопирована.")).catch(()=>setCopied("Скопируйте адрес из строки браузера.")); }}>Скопировать ссылку на момент</button><p role="status">{copied}</p>
       </section>
     </>}
       <p className="frame-status" role="status">{frameRead.error && <>{frameRead.error} <button onClick={()=>setRetry(n=>n+1)}>Повторить загрузку</button> </>}{frameRead.pending ? `Загрузка ${gameTime(time)}… ${frame ? `Показан кадр ${gameTime(frame.time)}.` : "Ожидание кадра."}` : frame ? `Показан кадр ${gameTime(frame.time)}.` : "Кадр недоступен."}</p>
-      <div className="episode-context"><EpisodeMap frame={frame} selectedSlot={slot} select={s=>navigate({hero:String(s)})}/>
+      <div className="episode-context"><EpisodeMap frame={frame} motion={visualPositions(frameRead.window,frame?.time ?? time)} selectedSlot={slot} select={s=>navigate({hero:String(s)})}/>
         <section><h2>Состояние: {hero(selected?.heroId)}</h2><p>{observation?.ageSeconds==null ? "Подтверждённого наблюдения нет." : `Наблюдение ${gameTime(state!.gameTimeSeconds)}; возраст ${observation.ageSeconds.toFixed(3)} сек.`}</p>
           <dl className="stat-grid"><div><dt>Здоровье</dt><dd>{numeric(state?.hp)}</dd></div><div><dt>Мана</dt><dd>{numeric(state?.mana)}</dd></div><div><dt>Жизнь</dt><dd>{state?.alive.status==='known'?state.alive.value?'жив':'умирает / мёртв':'неизвестно'}</dd></div><div><dt>Видимость</dt><dd>{state?.visibility.status==='known'?state.visibility.value==='visible'?'виден':'скрыт':'неизвестно'}</dd></div></dl>
           <p>Координаты: {state?.position.status==='known'?`${state.position.value.x.toFixed(1)}, ${state.position.value.y.toFixed(1)}`:'неизвестно'}.</p>

@@ -10,7 +10,7 @@ export function usePlaybackFrame<T extends MatchFrame>({ datasetId, accountId, m
   const cache = useMemo(()=>{ const value=new PlaybackCache(); value.reset(scope); return value; },[scope]);
   const [, changed] = useState(0);
   const [failure,setFailure] = useState<{key:string;message:string}|null>(null);
-  const [last,setLast] = useState<{scope:string;frame:T}|null>(null);
+  const [last,setLast] = useState<{scope:string;frame:T;window:PlaybackWindow}|null>(null);
   const bucket = Math.floor(time/WINDOW_SECONDS), key=`${scope}:${bucket}:${retry}`;
   const valid=enabled && !!datasetId && !!accountId && Number.isFinite(time) && ["decision","retrospective"].includes(mode);
   const window = valid ? cache.get(bucket) : undefined;
@@ -36,7 +36,7 @@ export function usePlaybackFrame<T extends MatchFrame>({ datasetId, accountId, m
     return ()=>controller.abort();
   },[cache,scope,bucket,valid,retry,key,accountId,datasetId,mode,matchId,episodeId]);
   const current = useMemo(()=>window ? observedFrame(window,time) as T : null,[window,time]);
-  useEffect(()=>{if(current)setLast({scope,frame:current});},[current,scope]);
+  useEffect(()=>{if(current && window)setLast({scope,frame:current,window});},[current,scope,window]);
   const error=failure?.key===key ? failure.message : null;
-  return {frame:valid ? current ?? (last?.scope===scope ? last.frame : null) : null,error,pending:valid&&!current&&!error,ready:!!current,window,cache};
+  return {frame:valid ? current ?? (last?.scope===scope ? last.frame : null) : null,error,pending:valid&&!current&&!error,ready:!!current,window:valid ? window ?? (last?.scope===scope ? last.window : undefined) : undefined,cache};
 }
