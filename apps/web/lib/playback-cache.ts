@@ -13,9 +13,12 @@ export class PlaybackCache {
   scope = "";
   generation = 0;
   bytes = 0;
+  requests = 0;
+  receivedBytes = 0;
+  latencies: number[] = [];
   private pinned: number | null = null;
   pin(bucket: number) { this.pinned = bucket; }
-  reset(scope: string) { if (this.scope !== scope) { this.scope = scope; this.generation++; this.windows.clear(); this.bytes=0; } }
+  reset(scope: string) { if (this.scope !== scope) { this.scope = scope; this.generation++; this.windows.clear(); this.bytes=0; this.requests=0; this.receivedBytes=0; this.latencies=[]; } }
   get(bucket: number) {
     const entry = this.windows.get(bucket);
     if (entry) { this.windows.delete(bucket); this.windows.set(bucket,entry); }
@@ -23,7 +26,7 @@ export class PlaybackCache {
   }
   put(scope: string, generation: number, value: PlaybackWindow, bytes: number) {
     if (scope !== this.scope || generation !== this.generation) return false;
-    if (value.version !== PLAYBACK_VERSION || bytes > 4*1024**2 || bytes < 0) throw new Error("Недопустимый интервал просмотра.");
+    if (value.version !== PLAYBACK_VERSION || !Number.isSafeInteger(bytes) || bytes > 4*1024**2 || bytes < 0) throw new Error("Недопустимый интервал просмотра.");
     const previous = this.windows.get(value.bucket);
     if (previous) this.bytes -= previous.bytes;
     this.windows.delete(value.bucket); this.windows.set(value.bucket,{ value,bytes }); this.bytes += bytes;

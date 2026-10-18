@@ -58,7 +58,8 @@
     "test:match-view": "node scripts/test-postgres.mjs scripts/match-view.test.mjs",
     "test:episode-view": "node scripts/test-postgres.mjs scripts/episode-view.test.mjs",
     "test:episode-reviews": "node scripts/test-postgres.mjs scripts/episode-reviews.test.mjs",
-    "test:playback": "node scripts/test-postgres.mjs scripts/playback.test.mjs"
+    "test:playback": "node scripts/test-postgres.mjs scripts/playback.test.mjs",
+    "test:playback-visual": "node --test scripts/visual-motion.test.mjs scripts/playback-clock.test.mjs"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

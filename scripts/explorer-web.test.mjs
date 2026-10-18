@@ -98,6 +98,14 @@ test('production full-match HTTP without episodes: direct links, frames, filters
     const imageRequests=new Map(), playbackRequests=new Map();
     const failedFrames=new Set();
     iconPreview=createHttpServer((req,res)=>{
+      if(req.url==='/__playback_lifecycle'){
+        // Test-only, same-origin harness. IAB does not expose actual tab visibility changes.
+        res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});
+        res.end(`<!doctype html><html lang="ru"><meta charset="utf-8"><title>Playback lifecycle test</title>
+          <button id="hide">Тест: скрыть вкладку</button><button id="show">Тест: вернуть вкладку</button>
+          <iframe title="Проверка воспроизведения" src="${path}&diagnostics=1" style="width:100%;height:900px;border:0"></iframe>
+          <script>const frame=document.querySelector('iframe');document.querySelector('#hide').onclick=()=>{const doc=frame.contentDocument;Object.defineProperty(doc,'hidden',{value:true,configurable:true});doc.dispatchEvent(new Event('visibilitychange'));};document.querySelector('#show').onclick=()=>{const doc=frame.contentDocument;delete doc.hidden;doc.dispatchEvent(new Event('visibilitychange'));};</script></html>`);return;
+      }
       if(req.url.startsWith('/heroes/')){
         imageRequests.set(req.url,(imageRequests.get(req.url)??0)+1);
         if(req.url===heroCatalog.heroes['2'].icon){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Missing preview icon');return;}
@@ -106,8 +114,10 @@ test('production full-match HTTP without episodes: direct links, frames, filters
       const at=requested.searchParams.get('time');
       if(requested.searchParams.get('resource')==='playback')playbackRequests.set(req.url,(playbackRequests.get(req.url)??0)+1);
       const isFrame=requested.searchParams.get('resource')==='frame'||requested.pathname.endsWith('/view');
+      const playbackBucket=requested.searchParams.get('resource')==='playback'?requested.searchParams.get('bucket'):null;
+      if(playbackBucket==='22'&&!failedFrames.has(req.url)){failedFrames.add(req.url);res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'service_unavailable'}));return;}
       if(isFrame&&at==='603'&&!failedFrames.has(req.url)){failedFrames.add(req.url);res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'temporary_unavailable'}));return;}
-      const proxy=httpRequest(baseUrl+req.url,{method:req.method,headers:req.headers},upstream=>{const send=()=>{res.writeHead(upstream.statusCode,upstream.headers);upstream.pipe(res);};if(isFrame&&at==='601')setTimeout(send,3000);else if(isFrame&&at==='602')setTimeout(send,500);else send();});
+      const proxy=httpRequest(baseUrl+req.url,{method:req.method,headers:req.headers},upstream=>{const send=()=>{res.writeHead(upstream.statusCode,upstream.headers);upstream.pipe(res);};if(playbackBucket==='21')setTimeout(send,5000);else if(isFrame&&at==='601')setTimeout(send,3000);else if(isFrame&&at==='602')setTimeout(send,500);else send();});
       proxy.on('error',()=>{res.writeHead(502);res.end();});req.pipe(proxy);
     }).listen(0,'127.0.0.1');
     await once(iconPreview,'listening');

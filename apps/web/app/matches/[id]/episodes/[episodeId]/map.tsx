@@ -13,8 +13,8 @@ export default function EpisodeMap({ frame, selectedSlot, select, motion }: { fr
     const id = frame?.heroes.find(h => h.playerSlot === slot)?.heroId;
     return heroName(id);
   };
-  return <section className="episode-map" aria-label="Карта эпизода"><h2>Карта · {frame ? gameTime(frame.time) : "ожидание кадра"}</h2>
-    <p className="muted">{frame?.map.reason ?? "Приблизительная подложка 7.40. Рельеф и проходимость могут отличаться."}</p>
+  return <section className="episode-map" aria-label="Карта эпизода"><h2>Карта · {frame ? gameTime(frame.time) : "—"}</h2>
+    <p className="muted">{frame?.map.reason ?? "Приблизительная подложка 7.40. В контрольном реплее отдельные ориентиры смещены до 9% ширины карты; рельеф и проходимость могут отличаться."}</p>
     {failed ? <p role="alert">Не удалось загрузить подложку. Состояния героев доступны в соседней панели.</p> : <div className="map-surface">
       <img src={frame?.map.image ?? "/maps/dota-7.40.webp"} width={900} height={900} alt="Приблизительная карта Dota 2, подложка 7.40" onError={() => setFailed(true)}/>
       {points.map(row => {

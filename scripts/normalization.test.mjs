@@ -15,7 +15,7 @@ test('real replay normalization is committed atomically with provenance and dist
   await migrate(pool); const storage=new LocalStorage(root);
   const path=resolve('data/replay-validation/2026-10-12-e01-t02/manifest.json');
   let manifest;try {manifest=JSON.parse(await readFile(path));}catch(e){if(e.code==='ENOENT'){t.skip('local replay unavailable');return;}throw e;}
-  const sample=manifest.records[0],matchId=String(sample.matchId);
+  const sample=manifest.records[Number(process.env.NORMALIZATION_SAMPLE_INDEX ?? 0)],matchId=String(sample.matchId);
   const file=await storage.put(createReadStream(resolve(dirname(path),sample.replayFile)));
   await transaction(pool,async c=>{await c.query('INSERT INTO dota.matches(match_id) VALUES ($1)',[matchId]);await registerArtifact(c,{id:'normalized-replay',matchId,file,mediaType:REPLAY_MEDIA_TYPE,source:{}});});
   const handler=normalizationHandler(pool,storage),row={artifact_id:'normalized-replay',match_id:matchId,versions:await defaultVersions()};

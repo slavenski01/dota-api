@@ -4,6 +4,8 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { MatchExplorer, MatchFrame, MatchOverview, ViewerState } from "@dota/jobs";
 import type { GameEvent } from "@dota/contracts";
+import { usePlayback } from "../../../../lib/use-playback";
+import PlaybackControls from "../../../components/playback-controls";
 import { useLocalTime } from "../../../../lib/use-local-time";
 import { visualPositions } from "../../../../lib/visual-motion";
 import { usePlaybackFrame } from "../../../../lib/use-playback-frame";
@@ -43,10 +45,12 @@ export default function Explorer({ matchId }: { matchId: string }) {
   const valid = view && ["decision","retrospective"].includes(mode) && Number.isFinite(time) && time >= view.window.startSeconds && time <= view.window.endSeconds && view.players.some(p=>p.playerSlot===slot);
   const frameRead = usePlaybackFrame<MatchFrame>({datasetId,accountId,matchId,mode,time,retry,enabled:!!valid});
   const frame = frameRead.frame;
+  const controls=usePlayback({key:JSON.stringify([matchId,search.toString()]),time,end:view?.window.endSeconds ?? 0,enabled:!!valid,ready:frameRead.ready,setTime:timeline.set,commit:at=>navigate({time:String(at)})});
   const eventType = search.get("eventType") ?? "", eventPlayer = search.get("eventPlayer") ?? "", cursor = search.get("cursor") ?? "";
   const eventsRead = useRead<{ events: GameEvent[]; nextCursor: string | null; limitation: string }>(valid ? url("events",{mode,...(eventType?{type:eventType}:{}),...(eventPlayer?{playerSlot:eventPlayer}:{}),...(cursor?{cursor}:{})}) : null,retry);
   const seriesRead = useRead<{ series: MatchOverview["series"] }>(valid ? url("series",{mode,playerSlot:String(slot)}) : null,retry);
   function navigate(changes: Record<string,string | null>) {
+    controls.stop();
     const next = new URL(window.location.href);
     if(Number.isFinite(time))next.searchParams.set("time",String(time));
     for (const [key,value] of Object.entries(changes)) { if(value===null)next.searchParams.delete(key);else next.searchParams.set(key,value); }
@@ -81,8 +85,9 @@ export default function Explorer({ matchId }: { matchId: string }) {
         <label>Время, игровые секунды<input aria-label="Время, игровые секунды" type="number" step="any" min={view.window.startSeconds} max={view.window.endSeconds} value={Number.isFinite(time)?time:""} onChange={e=>{if(e.target.value.trim())navigate({time:e.target.value});}}/></label>
       </div>
       <label htmlFor="match-time">{Number.isFinite(time)?gameTime(time):"Время не задано"} · весь матч: {gameTime(view.window.startSeconds)}–{gameTime(view.window.endSeconds)}</label>
-      <input id="match-time" type="range" min={view.window.startSeconds} max={view.window.endSeconds} step="any" value={Number.isFinite(time)?time:0} aria-valuetext={Number.isFinite(time)?gameTime(time):"Неизвестно"} onChange={e=>timeline.scrub(Number(e.target.value))} onPointerUp={commitScrub} onPointerCancel={commitScrub} onBlur={commitScrub} onKeyUp={commitScrub} onKeyDown={e=>{const d=e.key==='ArrowRight'||e.key==='ArrowUp'?1:e.key==='ArrowLeft'||e.key==='ArrowDown'?-1:0;if(d){e.preventDefault();go(time+d);}}}/>
+      <input id="match-time" type="range" min={view.window.startSeconds} max={view.window.endSeconds} step="any" value={Number.isFinite(time)?time:0} aria-valuetext={Number.isFinite(time)?gameTime(time):"Неизвестно"} onChange={e=>{controls.stop();timeline.scrub(Number(e.target.value));}} onPointerUp={commitScrub} onPointerCancel={commitScrub} onBlur={commitScrub} onKeyUp={commitScrub} onKeyDown={e=>{const d=e.key==='ArrowRight'||e.key==='ArrowUp'?1:e.key==='ArrowLeft'||e.key==='ArrowDown'?-1:0;if(d){e.preventDefault();go(time+d);}}}/>
       <div className="history-actions"><button onClick={()=>go(view.window.startSeconds)}>Начало записи</button><button disabled={!valid} onClick={()=>go(time-30)}>−30 сек</button><button disabled={!valid} onClick={()=>go(time-1)}>−1 сек</button><button disabled={!valid} onClick={()=>go(time+1)}>+1 сек</button><button disabled={!valid} onClick={()=>go(time+30)}>+30 сек</button><button onClick={()=>go(view.window.endSeconds)}>Конец записи</button></div>
+      <PlaybackControls control={controls} enabled={!!valid} ready={frameRead.ready} end={time>=view.window.endSeconds} diagnostics={search.get("diagnostics")==="1"} cache={frameRead.cache}/>
       <button disabled={!valid} onClick={()=>{ const link=new URL(window.location.href);link.searchParams.set('time',String(time));link.searchParams.set('hero',String(slot));link.searchParams.set('mode',mode);void navigator.clipboard.writeText(link.href).then(()=>setCopied("Ссылка скопирована.")).catch(()=>setCopied("Скопируйте адрес из строки браузера.")); }}>Скопировать ссылку на момент</button><p role="status">{copied}</p>
       </section>
     </>}

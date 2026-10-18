@@ -1,7 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { usePlayback } from "../../../../../lib/use-playback";
+import PlaybackControls from "../../../../components/playback-controls";
 import { useLocalTime } from "../../../../../lib/use-local-time";
 import { visualPositions } from "../../../../../lib/visual-motion";
 import type { EpisodeFrame, ViewerState } from "@dota/jobs";
@@ -21,7 +23,10 @@ export default function EpisodeViewer({ matchId, datasetId, episodeId, accountId
   const endpoint = `/api/datasets/${encodeURIComponent(datasetId)}/episodes/${encodeURIComponent(episodeId)}`;
   const query = new URLSearchParams({ accountId, mode });
   const bootstrap = useFrame<EpisodeFrame>(`${endpoint}/view?${query}`, JSON.stringify([matchId,datasetId,episodeId,accountId,mode]), matchId, retry);
-  const last = bootstrap.frame;
+  const metadataKey=JSON.stringify([matchId,datasetId,episodeId,accountId]);
+  const [metadata,setMetadata]=useState<{key:string;value:Pick<EpisodeFrame,"window"|"decisionTimeSeconds"|"playerSlot"|"heroes"|"time">}|null>(null);
+  useEffect(()=>{if(bootstrap.frame){const {window,decisionTimeSeconds,playerSlot,heroes,time}=bootstrap.frame;setMetadata({key:metadataKey,value:{window,decisionTimeSeconds,playerSlot,heroes,time}});}},[bootstrap.frame,metadataKey]);
+  const last = bootstrap.frame ?? (metadata?.key===metadataKey ? metadata.value : null);
   const rawTime=search.get("time") ?? initialTime;
   const timeline=useLocalTime(search.has("time") && !rawTime.trim() ? NaN : rawTime ? Number(rawTime) : last?.decisionTimeSeconds ?? NaN,JSON.stringify([matchId,datasetId,episodeId,accountId,mode]));
   const time=timeline.time;
@@ -29,7 +34,9 @@ export default function EpisodeViewer({ matchId, datasetId, episodeId, accountId
   const valid=!!last && Number.isFinite(time) && time>=last.window.startSeconds && time<=last.window.endSeconds && last.heroes.some(h=>h.playerSlot===slot);
   const playback = usePlaybackFrame<EpisodeFrame>({datasetId,accountId,matchId,episodeId,mode,time,retry,enabled:valid});
   const frame = playback.frame, error = bootstrap.error ?? playback.error, pending = bootstrap.pending || playback.pending;
+  const controls=usePlayback({key:JSON.stringify([matchId,datasetId,episodeId,accountId,search.toString()]),time,end:last?.window.endSeconds ?? 0,enabled:valid,ready:playback.ready,setTime:timeline.set,commit:at=>navigate(mode,at)});
   function navigate(nextMode: string, nextTime: number | null, nextSlot=slot) {
+    controls.stop();
     const value=nextTime ?? last?.decisionTimeSeconds ?? NaN;
     if(Number.isFinite(value))timeline.set(value);
     const url = new URL(window.location.href);url.searchParams.set("mode",nextMode);
@@ -46,8 +53,9 @@ export default function EpisodeViewer({ matchId, datasetId, episodeId, accountId
     <section><label>Перспектива <select aria-label="Перспектива" value={mode} onChange={e => navigate(e.target.value,time ?? last?.time ?? null)}><option value="decision">Команда выбранного игрока</option><option value="retrospective">Полный ретроспективный обзор</option></select></label>
       {last && <><p>Окно {gameTime(last.window.startSeconds)}–{gameTime(last.window.endSeconds)} · момент решения {gameTime(last.decisionTimeSeconds)}</p>
         <label htmlFor="episode-time">Игровое время: {time === null ? gameTime(last.time) : gameTime(time)}</label>
-        <input id="episode-time" type="range" min={last.window.startSeconds} max={last.window.endSeconds} step="any" value={time ?? last.time} onChange={e=>timeline.scrub(Number(e.target.value))} onPointerUp={commitScrub} onPointerCancel={commitScrub} onBlur={commitScrub} onKeyUp={commitScrub} onKeyDown={e=>{ const delta = e.key === "ArrowRight" || e.key === "ArrowUp" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowDown" ? -1 : 0; if(delta){e.preventDefault();navigate(mode,Math.max(last.window.startSeconds,Math.min(last.window.endSeconds,(time??last.time)+delta)));} }} aria-valuetext={gameTime(time ?? last.time)}/>
+        <input id="episode-time" type="range" min={last.window.startSeconds} max={last.window.endSeconds} step="any" value={time ?? last.time} onChange={e=>{controls.stop();timeline.scrub(Number(e.target.value));}} onPointerUp={commitScrub} onPointerCancel={commitScrub} onBlur={commitScrub} onKeyUp={commitScrub} onKeyDown={e=>{ const delta = e.key === "ArrowRight" || e.key === "ArrowUp" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowDown" ? -1 : 0; if(delta){e.preventDefault();navigate(mode,Math.max(last.window.startSeconds,Math.min(last.window.endSeconds,(time??last.time)+delta)));} }} aria-valuetext={gameTime(time ?? last.time)}/>
         <div className="history-actions"><button onClick={()=>navigate(mode,Math.max(last.window.startSeconds,(time??last.time)-1))}>−1 сек</button><button onClick={()=>navigate(mode,last.decisionTimeSeconds)}>К решению</button><button onClick={()=>navigate(mode,Math.min(last.window.endSeconds,(time??last.time)+1))}>+1 сек</button></div>
+        <PlaybackControls control={controls} enabled={valid} ready={playback.ready} end={time>=last.window.endSeconds} diagnostics={search.get("diagnostics")==="1"} cache={playback.cache}/>
       </>}
     </section>
     {last && !valid && <p role="alert">Некорректное время или герой в ссылке. <button onClick={()=>navigate(mode,last.decisionTimeSeconds,last.playerSlot)}>К решению</button></p>}
