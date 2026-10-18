@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { MatchExplorer, MatchFrame, MatchOverview, ViewerState } from "@dota/jobs";
 import type { GameEvent } from "@dota/contracts";
+import { useFrame } from "../../../../lib/use-frame";
 import { api } from "../../../../lib/source-errors";
 import { gameTime } from "../../../../lib/game-time";
 import { heroName as hero } from "../../../../lib/hero-catalog";
@@ -19,7 +20,7 @@ function useRead<T>(url: string | null, retry: number) {
   const [result,setResult] = useState<{ url: string; value?: T; error?: string } | null>(null);
   useEffect(() => {
     if (!url) return;
-    const controller = new AbortController(); setResult(null);
+    const controller = new AbortController();
     void api<T>(url,{signal:controller.signal}).then(value => { if (!controller.signal.aborted) setResult({url,value}); })
       .catch(e => { if (!controller.signal.aborted) setResult({url,error:e.message}); });
     return () => controller.abort();
@@ -37,8 +38,8 @@ export default function Explorer({ matchId }: { matchId: string }) {
   const time = rawTime === null ? 0 : rawTime.trim() ? Number(rawTime) : NaN;
   const slot = rawSlot === null ? view?.player.playerSlot : rawSlot.trim() ? Number(rawSlot) : NaN;
   const valid = view && ["decision","retrospective"].includes(mode) && Number.isFinite(time) && time >= view.window.startSeconds && time <= view.window.endSeconds && view.players.some(p=>p.playerSlot===slot);
-  const frameRead = useRead<MatchFrame>(valid ? url("frame",{mode,time:String(time)}) : null,retry);
-  const frame = frameRead?.value;
+  const frameRead = useFrame<MatchFrame>(valid ? url("frame",{mode,time:String(time)}) : null, JSON.stringify([matchId,datasetId,accountId,mode]), matchId,retry);
+  const frame = frameRead.frame;
   const eventType = search.get("eventType") ?? "", eventPlayer = search.get("eventPlayer") ?? "", cursor = search.get("cursor") ?? "";
   const eventsRead = useRead<{ events: GameEvent[]; nextCursor: string | null; limitation: string }>(valid ? url("events",{mode,...(eventType?{type:eventType}:{}),...(eventPlayer?{playerSlot:eventPlayer}:{}),...(cursor?{cursor}:{})}) : null,retry);
   const seriesRead = useRead<{ series: MatchOverview["series"] }>(valid ? url("series",{mode,playerSlot:String(slot)}) : null,retry);
@@ -57,7 +58,7 @@ export default function Explorer({ matchId }: { matchId: string }) {
     if(data.type==='objective')return `Объект: ${data.objectId} · ${data.ownerTeam ?? "сторона неизвестна"} → ${data.beneficiaryTeam ?? "сторона неизвестна"}`;
     return `Бой: ${gameTime(data.window.startSeconds)}–${gameTime(data.window.endSeconds)}`;
   };
-  const errors = [meta?.error,frameRead?.error,eventsRead?.error,seriesRead?.error].filter(Boolean);
+  const errors = [meta?.error,eventsRead?.error,seriesRead?.error].filter(Boolean);
   const numeric = (value: ViewerState["hp"] | undefined) => value?.status === "known" ? value.value : "неизвестно";
   return <main className="episode-page explorer-page"><Link href={`/matches/${encodeURIComponent(matchId)}?accountId=${encodeURIComponent(accountId)}`}>← К матчу</Link>
     <p className="eyebrow">ИССЛЕДОВАНИЕ ВСЕЙ ИГРЫ</p><h1>Матч {matchId}</h1><p>Выбирайте время, изучайте героев и события. Автоматические эпизоды для просмотра не требуются.</p>
@@ -78,13 +79,15 @@ export default function Explorer({ matchId }: { matchId: string }) {
       <div className="history-actions"><button onClick={()=>go(view.window.startSeconds)}>Начало записи</button><button disabled={!valid} onClick={()=>go(time-30)}>−30 сек</button><button disabled={!valid} onClick={()=>go(time-1)}>−1 сек</button><button disabled={!valid} onClick={()=>go(time+1)}>+1 сек</button><button disabled={!valid} onClick={()=>go(time+30)}>+30 сек</button><button onClick={()=>go(view.window.endSeconds)}>Конец записи</button></div>
       <button disabled={!valid} onClick={()=>{ const link=new URL(window.location.href);link.searchParams.set('time',String(time));link.searchParams.set('hero',String(slot));link.searchParams.set('mode',mode);void navigator.clipboard.writeText(link.href).then(()=>setCopied("Ссылка скопирована.")).catch(()=>setCopied("Скопируйте адрес из строки браузера.")); }}>Скопировать ссылку на момент</button><p role="status">{copied}</p>
       </section>
-      {valid && !frame && !frameRead?.error && <p role="status">Загрузка состояния…</p>}
-      {frame && <><p className="notice">{frame.limitations.join(" ")}</p><div className="episode-context"><EpisodeMap frame={frame} selectedSlot={slot} select={s=>navigate({hero:String(s)})}/>
+    </>}
+      <p className="frame-status" role="status">{frameRead.error && <>{frameRead.error} <button onClick={()=>setRetry(n=>n+1)}>Повторить загрузку</button> </>}{frameRead.pending ? `Загрузка ${gameTime(time)}… ${frame ? `Показан кадр ${gameTime(frame.time)}.` : "Ожидание кадра."}` : frame ? `Показан кадр ${gameTime(frame.time)}.` : "Кадр недоступен."}</p>
+      <div className="episode-context"><EpisodeMap frame={frame} selectedSlot={slot} select={s=>navigate({hero:String(s)})}/>
         <section><h2>Состояние: {hero(selected?.heroId)}</h2><p>{observation?.ageSeconds==null ? "Подтверждённого наблюдения нет." : `Наблюдение ${gameTime(state!.gameTimeSeconds)}; возраст ${observation.ageSeconds.toFixed(3)} сек.`}</p>
           <dl className="stat-grid"><div><dt>Здоровье</dt><dd>{numeric(state?.hp)}</dd></div><div><dt>Мана</dt><dd>{numeric(state?.mana)}</dd></div><div><dt>Жизнь</dt><dd>{state?.alive.status==='known'?state.alive.value?'жив':'умирает / мёртв':'неизвестно'}</dd></div><div><dt>Видимость</dt><dd>{state?.visibility.status==='known'?state.visibility.value==='visible'?'виден':'скрыт':'неизвестно'}</dd></div></dl>
           <p>Координаты: {state?.position.status==='known'?`${state.position.value.x.toFixed(1)}, ${state.position.value.y.toFixed(1)}`:'неизвестно'}.</p>
           <h3>Предметы</h3>{state?.inventory.status==='known'?state.inventory.value.length?<ul>{state.inventory.value.map(i=><li key={i.slot}>Слот {i.slot}: {itemNames.get(i.itemId)??i.itemId} · заряды {i.charges??'неизвестно'}</li>)}</ul>:<p>Подтверждённо пустой инвентарь.</p>:<p>Неизвестно.</p>}<p>Готовность и применимость способностей пока не подтверждены.</p>
-        </section></div></>}
+        </section></div>
+    {view && <>
       {valid && slot!==undefined && <MatchNotes key={`${datasetId}:${accountId}:${mode}`} datasetId={datasetId} accountId={accountId} matchId={matchId} time={time} slot={slot} mode={mode as "decision"|"retrospective"} heroName={hero(selected?.heroId)}/>}
       <section><h2>События всей игры</h2><div className="filters"><label>Тип события<select value={eventType} onChange={e=>navigate({eventType:e.target.value||null,cursor:null})}><option value="">Все события</option><option value="death">Смерти</option><option value="item">Предметы</option><option value="objective">Объекты</option><option value="fight">Бои</option></select></label>
         <label>Участник событий<select value={eventPlayer} onChange={e=>navigate({eventPlayer:e.target.value||null,cursor:null})}><option value="">Все участники</option>{view.players.map(p=><option key={p.playerSlot} value={p.playerSlot}>{hero(p.heroId)} · слот {p.playerSlot}</option>)}</select></label></div>

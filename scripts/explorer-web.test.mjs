@@ -75,12 +75,17 @@ test('production full-match HTTP without episodes: direct links, frames, filters
     await storeStateSegments(pool,new LocalStorage(root),edgeId,samples);
     // Browser-only failure injection at a separate loopback origin. Production assets remain untouched.
     const imageRequests=new Map();
+    const failedFrames=new Set();
     iconPreview=createHttpServer((req,res)=>{
       if(req.url.startsWith('/heroes/')){
         imageRequests.set(req.url,(imageRequests.get(req.url)??0)+1);
         if(req.url===heroCatalog.heroes['2'].icon){res.writeHead(404,{'Cache-Control':'no-store'});res.end('Missing preview icon');return;}
       }
-      const proxy=httpRequest(baseUrl+req.url,{method:req.method,headers:req.headers},upstream=>{res.writeHead(upstream.statusCode,upstream.headers);upstream.pipe(res);});
+      const requested=new URL(req.url,'http://preview.local');
+      const at=requested.searchParams.get('time');
+      const isFrame=requested.searchParams.get('resource')==='frame'||requested.pathname.endsWith('/view');
+      if(isFrame&&at==='603'&&!failedFrames.has(req.url)){failedFrames.add(req.url);res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'temporary_unavailable'}));return;}
+      const proxy=httpRequest(baseUrl+req.url,{method:req.method,headers:req.headers},upstream=>{const send=()=>{res.writeHead(upstream.statusCode,upstream.headers);upstream.pipe(res);};if(isFrame&&at==='601')setTimeout(send,3000);else if(isFrame&&at==='602')setTimeout(send,500);else send();});
       proxy.on('error',()=>{res.writeHead(502);res.end();});req.pipe(proxy);
     }).listen(0,'127.0.0.1');
     await once(iconPreview,'listening');

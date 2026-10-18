@@ -107,3 +107,5 @@ td:nth-child(6) { min-width: 220px; }
 .review-editor textarea { font: inherit; padding: 12px; min-height: 100px; resize: vertical; background: #18221e; color: inherit; border: 1px solid #57704e; border-radius: 8px; }
 .review-editor textarea:focus-visible { outline: 2px solid #f1f4e9; outline-offset: 3px; }
 .review-editor details { margin-top: 24px; overflow-wrap: anywhere; }
+
+.frame-status { min-height: 3em; margin: 12px 0; }
