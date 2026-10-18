@@ -13,6 +13,8 @@
     "packages/*"
   ],
   "scripts": {
+    "coach:bridge": "node --env-file-if-exists=.env scripts/coach-bridge.mjs",
+    "test:coach-provider": "node scripts/test-postgres.mjs scripts/coach-provider.test.mjs",
     "build:packages": "npm run build --workspace=@dota/contracts && npm run build --workspace=@dota/analysis && npm run build --workspace=@dota/persistence && npm run build --workspace=@dota/jobs",
     "build:ts": "npm run build:packages && npm run build --workspace=@dota/worker && npm run build --workspace=@dota/web",
     "build:parser": "./services/replay-parser/gradlew --project-dir services/replay-parser --no-daemon build installDist",

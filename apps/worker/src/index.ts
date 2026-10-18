@@ -1,5 +1,5 @@
 import { openDatabase, migrate, LocalStorage, configuredStorageRoot, artifactById } from "@dota/persistence";
-import { startQueue, consume, JobError, executeWorkflow, replayHandlers, type WorkflowMessage, type HistoryMessage, executeHistory } from "@dota/jobs";
+import { startQueue, consume, JobError, executeWorkflow, replayHandlers, type WorkflowMessage, type HistoryMessage, executeHistory, executeCoach, type CoachMessage } from "@dota/jobs";
 import { startHealth } from "./health.js";
 
 const args = process.argv.slice(2);
@@ -26,7 +26,8 @@ if (args.length > 1 || (args.length === 1 && args[0] !== "--check")) {
     boss = await startQueue(process.env.DATABASE_URL);
     const queue = boss;
     const handlers = replayHandlers(pool, storage);
-    const stopConsumer = await consume<WorkflowMessage | HistoryMessage | { kind: "verify_artifact"; artifactId: string }>(boss, pool, async ({ job, signal }) => {
+    const stopConsumer = await consume<WorkflowMessage | HistoryMessage | CoachMessage | { kind: "verify_artifact"; artifactId: string }>(boss, pool, async ({ job, signal }) => {
+      if (job.data.kind === "coach_report") return executeCoach(pool, queue, { job: { ...job, data: job.data }, signal });
       if (job.data.kind === "history_page") return executeHistory(pool, queue, { job: { ...job, data: job.data }, signal });
       if (job.data.kind === "process_match") return executeWorkflow(pool, queue, { job: { ...job, data: job.data }, signal }, handlers);
       log("job.started", { job_id: job.id });

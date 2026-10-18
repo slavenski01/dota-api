@@ -180,7 +180,7 @@ production web и Kotlin CLI; Gradle Wrapper включён в репозито�
 | `packages/persistence`, `packages/jobs` | Хранение, источники, очередь и обработка |
 | `scripts` | Миграции, проверки, эксплуатация и приёмка |
 | [Архитектура](docs/architecture.md) | Действующие связи, инварианты и границы |
-| [План](tasks-plan.md), [доска](tasks-board.html) | 46 DONE, 7 TODO, 6 SKIPPED; следующая задача E08-T01 требует выбора провайдера, модели и бюджета |
+| [План](tasks-plan.md), [доска](tasks-board.html) | 47 DONE, 6 TODO, 6 SKIPPED; E08-T01 завершена, далее E08-T02 |
 | [Контракты](docs/contracts.md), [хранение](docs/persistence.md) | Форматы, версии и транзакции |
 | [Источники](docs/profiles-and-history.md), [реплеи](docs/replay-import.md) | API и обработка недоступности |
 | [Аналитика](docs/analysis.md), [эпизоды](docs/episode-viewer.md) | Готовые метрики и ручные оценки |
@@ -190,3 +190,5 @@ production web и Kotlin CLI; Gradle Wrapper включён в репозито�
 `main`. Перед изменениями проверьте `git status`, исследуйте задачу и согласуйте
 план с пользователем. После каждой завершённой задачи — проверки, отдельный
 коммит и push. Исходные ответы, личные ID, реплеи и резервные копии не публикуются.
+
+AI-тренер E08 в работе: серверный адаптер использует текущий вход ChatGPT в Codex CLI на хосте. Запуск локального моста: `npm run coach:bridge`. [Настройки и ограничения](docs/coach.md).

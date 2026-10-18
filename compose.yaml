@@ -15,6 +15,10 @@ x-app: &app
     HTTP_PROXY: ${DOTA_HTTP_PROXY:-}
     HTTPS_PROXY: ${DOTA_HTTP_PROXY:-}
     NO_PROXY: localhost,127.0.0.1,::1,db
+    DOTA_COACH_MODEL: ${DOTA_COACH_MODEL:-gpt-6-astra}
+    DOTA_COACH_REASONING: ${DOTA_COACH_REASONING:-medium}
+    DOTA_COACH_DAILY_RUNS: ${DOTA_COACH_DAILY_RUNS:-10}
+    DOTA_COACH_TOTAL_RUNS: ${DOTA_COACH_TOTAL_RUNS:-100}
   volumes:
     - storage:/var/lib/dota/storage
   logging:
@@ -64,6 +68,12 @@ services:
     mem_limit: 1g
   worker:
     <<: *app
+    environment:
+      <<: *environment
+      DOTA_COACH_BRIDGE_DIR: /var/lib/dota/coach-bridge
+    volumes:
+      - storage:/var/lib/dota/storage
+      - ./data/coach-bridge:/var/lib/dota/coach-bridge
     command: ["node", "--max-old-space-size=256", "apps/worker/dist/index.js"]
     depends_on:
       migrate: { condition: service_completed_successfully }

@@ -6,6 +6,10 @@ export type { ProcessSpec } from "./process.js";
 export { requestWorkflow, executeWorkflow, getWorkflow, cancelWorkflow, defaultVersions, infrastructureHandlers, STAGES } from "./workflow.js";
 export type { WorkflowRequest, WorkflowMessage, StageHandlers, StageResult, PipelineVersions } from "./workflow.js";
 export const QUEUE = "match-processing";
+export { enqueueCoach, executeCoach, readCoachRuns } from "./coach.js";
+export type { CoachMessage, CoachRun } from "./coach.js";
+export { coachConfig, coachInstructions, coachHash, coachBridgeRoot, atomicCoachFile, readCoachFile, validateCoachResponse, invokeCoachBridge } from "./coach-provider.js";
+export type { CoachConfig, CoachInput, CoachResponse, CoachUsage } from "./coach-provider.js";
 export class JobError extends Error {
   constructor(readonly code: string, readonly retryable = false) { super(code); this.name = "JobError"; }
 }
