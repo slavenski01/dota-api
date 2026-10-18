@@ -16,7 +16,7 @@ export function analysisHandler(pool: Pool): StageHandler {
     const context = analysisContext(records, validation, players[0].playerSlot);
     const run = analyse(context, row.analysis_options, row.versions);
     signal.throwIfAborted();
-    return { analysisId: run.id, reportStatus: "not_requested", limitations: ["Автоматический отбор эпизодов выполнен. Для оценки откройте эпизод и сохраните ручную проверку. Текстовый отчёт пока не подключён.",
+    return { analysisId: run.id, reportStatus: "not_requested", limitations: ["Автоматический отбор эпизодов выполнен. Для оценки откройте эпизод и сохраните ручную проверку.",
       ...(run.completeness === "partial" ? ["Часть правил пропущена или имеет неполные окна данных; причины доступны в результате анализа."] : [])],
       commit: async client => {
         const inserted = await client.query("INSERT INTO dota.analysis_runs(id,dataset_id,match_id,player_slot,payload) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING RETURNING id", [run.id, run.datasetId, run.matchId, run.playerSlot, run]);

@@ -4,10 +4,11 @@ import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { spawn } from 'node:child_process';
 import { openDatabase, migrate, saveDataset, transaction } from '@dota/persistence';
 import { startQueue, consume, analysisHandler, defaultVersions, enqueueCoach, executeCoach, readCoachRuns, coachHash,
   coachInstructions, coachConfig, atomicCoachFile, readCoachFile, invokeCoachBridge, validateCoachResponse, JobError } from '@dota/jobs';
-import { processCoachSpool } from './coach-bridge.mjs';
+import { processCoachSpool, processDockerSpool } from './coach-bridge.mjs';
 import { fixture, death } from './fixtures/analysis.mjs';
 const config = coachConfig({});
 const result = { output: { ok: true }, usage: { inputTokens: 100, cachedInputTokens: 0, outputTokens: 10, costUsd: null, billing: 'subscription' }, cliVersion: 'fixture', durationMs: 5 };
@@ -61,4 +62,29 @@ test('spool resumes cached results, refuses duplicate invocation, handles timeou
     assert.equal((await readCoachFile(join(directory,`${timed}.result.json`),1000)).error,'coach_timeout');
     assert.throws(()=>validateCoachResponse({...result,usage:{...result.usage,inputTokens:-1}},config),/coach_invalid_response/);
   } finally { if(old===undefined) delete process.env.DOTA_COACH_BRIDGE_DIR; else process.env.DOTA_COACH_BRIDGE_DIR=old; await rm(directory,{recursive:true,force:true}); }
+});
+test('container spool claims once, preserves results and expires an abandoned request',async()=>{
+  const directory=await mkdtemp('/tmp/dota-coach-container-test-');
+  const transport=(action,id,input)=>new Promise((accept,reject)=>{
+    const child=spawn(process.execPath,['scripts/coach-spool.mjs',action,...(id?[id]:[])],{env:{...process.env,DOTA_COACH_BRIDGE_DIR:directory},stdio:['pipe','pipe','pipe']});
+    let output='';child.stdout.on('data',b=>output+=b);child.stderr.resume();child.once('error',reject);
+    child.once('close',code=>code===0?accept(JSON.parse(output)):reject(Error('spool_failed')));child.stdin.end(input?JSON.stringify(input):'');
+  });
+  const request=id=>({id,input:{prompt:'fixture',schema:{}},config,expiresAt:Date.now()+30000});
+  try {
+    const id=randomUUID();await atomicCoachFile(join(directory,`${id}.request.json`),request(id));
+    let invocations=0;
+    await processDockerSpool(new AbortController().signal,transport,async()=>{invocations++;return result;});
+    await processDockerSpool(new AbortController().signal,transport,async()=>{invocations++;return result;});
+    assert.equal(invocations,1);
+    await transport('complete',id,{error:'coach_provider_failed'});
+    assert.deepEqual(await readCoachFile(join(directory,`${id}.result.json`),1000),result);
+    const abandoned=randomUUID(),payload=request(abandoned);
+    await atomicCoachFile(join(directory,`${abandoned}.request.json`),payload);
+    assert.equal((await transport('next')).id,abandoned);
+    assert.equal(await transport('next'),null);
+    await atomicCoachFile(join(directory,`${abandoned}.request.json`),{...payload,expiresAt:Date.now()-1});
+    assert.equal(await transport('next'),null);
+    assert.equal((await readCoachFile(join(directory,`${abandoned}.result.json`),1000)).error,'coach_request_expired');
+  } finally {await rm(directory,{recursive:true,force:true});}
 });

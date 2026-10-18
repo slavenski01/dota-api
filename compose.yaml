@@ -70,10 +70,7 @@ services:
     <<: *app
     environment:
       <<: *environment
-      DOTA_COACH_BRIDGE_DIR: /var/lib/dota/coach-bridge
-    volumes:
-      - storage:/var/lib/dota/storage
-      - ./data/coach-bridge:/var/lib/dota/coach-bridge
+      DOTA_COACH_BRIDGE_DIR: /var/lib/dota/storage/.tmp/coach-bridge
     command: ["node", "--max-old-space-size=256", "apps/worker/dist/index.js"]
     depends_on:
       migrate: { condition: service_completed_successfully }

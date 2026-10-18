@@ -46,8 +46,11 @@ export async function listMatches(pool: Pool, filters: MatchFilters): Promise<{i
   if(after) where.push(`(m.started_at,m.match_id)<(${bind(after.time)}::timestamptz,${bind(after.id)}::text)`);
   const rows=(await pool.query(`SELECT m.summary,m.started_at,m.match_id,
     EXISTS(SELECT 1 FROM dota.artifacts a WHERE a.match_id=m.match_id AND a.media_type='application/x-dota-replay' AND a.source->>'validation'='replay-v1' AND a.source->'accountIds' ? m.account_id::text) AS stored_artifact,
-    j.id AS job_id,j.status AS processing,j.payload->>'dataLevel' AS data_level,j.payload->>'reportStatus' AS report_status
+    j.id AS job_id,j.status AS processing,j.payload->>'dataLevel' AS data_level,coalesce(c.status,j.payload->>'reportStatus') AS report_status
     FROM dota.player_matches m LEFT JOIN LATERAL (SELECT id,status,payload FROM dota.workflow_jobs WHERE match_id=m.match_id ORDER BY created_at DESC,id DESC LIMIT 1) j ON true
+    LEFT JOIN LATERAL (SELECT CASE WHEN c.status IN ('queued','running') THEN 'pending' ELSE c.status END AS status
+      FROM dota.coach_runs c JOIN dota.datasets d ON d.id=c.dataset_id JOIN dota.records p ON p.dataset_id=c.dataset_id AND p.kind='participant' AND p.player_slot=c.player_slot
+      WHERE d.match_id=m.match_id AND p.payload->>'accountId'=m.account_id::text ORDER BY c.created_at DESC LIMIT 1) c ON true
     WHERE ${where.join(" AND ")} ORDER BY m.started_at DESC,m.match_id DESC LIMIT ${bind(limit+1)}`,values)).rows;
   const page=rows.slice(0,limit); const last=page.at(-1);
   return {items:page.map(row=>({...row.summary,replayAvailability:"unchecked",storedArtifact:row.stored_artifact,processing:row.processing??"not_requested",jobId:row.job_id??null,dataLevel:row.data_level??"summary",reportStatus:row.report_status??"not_requested"})),

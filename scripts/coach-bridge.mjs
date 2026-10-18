@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { runBoundedProcess, coachConfig, coachBridgeRoot, atomicCoachFile, readCoachFile, validateCoachResponse } from '@dota/jobs';
 import { setTimeout as delay } from 'node:timers/promises';
+import {spawn} from 'node:child_process';
 
 export async function runCodex(request, signal) {
   const { input, config } = request;
@@ -77,10 +78,35 @@ async function main() {
   const controller = new AbortController();
   process.once('SIGINT',()=>controller.abort()); process.once('SIGTERM',()=>controller.abort());
   console.log('Codex coach bridge ready; saved ChatGPT login stays on this host.');
+  let disconnected=false;
   while (!controller.signal.aborted) {
-    await processCoachSpool(root,controller.signal);
-    await delay(500,undefined,{ signal: controller.signal }).catch(()=>{});
+    try {
+      if(process.argv.includes('--docker')) await processDockerSpool(controller.signal);
+      else await processCoachSpool(root,controller.signal);
+      if(disconnected) console.log('Coach worker connection restored.');
+      disconnected=false;
+    } catch(error) {
+      if(error.message!=='coach_docker_unavailable') throw error;
+      if(!disconnected) console.error('Coach worker unavailable; waiting for Docker.');
+      disconnected=true;
+    }
+    await delay(1000,undefined,{ signal: controller.signal }).catch(()=>{});
   }
+}
+async function dockerSpool(action,id,input) {
+  const args=['compose','exec','-T','worker','node','scripts/coach-spool.mjs',action];if(id)args.push(id);
+  const child=spawn('docker',args,{cwd:fileURLToPath(new URL('../',import.meta.url)),env:process.env,stdio:['pipe','pipe','pipe']});
+  let output='',size=0;child.stdout.on('data',b=>{size+=b.length;if(size>170*1024)child.kill();else output+=b;});child.stderr.resume();
+  child.stdin.on('error',()=>{});child.stdin.end(input?JSON.stringify(input):'');
+  const timer=setTimeout(()=>child.kill(),10000);
+  try{const code=await new Promise((accept,reject)=>{child.once('error',reject);child.once('close',accept);});if(code!==0)throw Error('coach_docker_unavailable');return JSON.parse(output);}finally{clearTimeout(timer);}
+}
+export async function processDockerSpool(signal,transport=dockerSpool,invoke=runCodex) {
+  const request=await transport('next');if(!request)return;
+  let result;
+  try{validRequest(request,request.id);result=await invoke(request,signal);}
+  catch(e){result={error:/^coach_[a-z_]+$/.test(e.message)?e.message:e.code==='process_timeout'?'coach_timeout':signal.aborted?'coach_interrupted':'coach_provider_failed'};}
+  await transport('complete',request.id,result);
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch(()=>{ console.error('coach_bridge_failed'); process.exitCode=1; });

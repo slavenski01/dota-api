@@ -64,13 +64,13 @@ export default function MatchReplay({ matchId, accountId, items }: { matchId: st
       <section aria-live="polite"><h2>{imported?"Реплей сохранён":state?states[state.job.status]:"Загрузка реплея"}</h2>
         {state&&<p>Обработка: {states[state.job.status]}</p>}
         {state?.job.error&&<p>{errors[state.job.error.code]??"Обработка не завершена. Можно повторить попытку или импортировать файл."}</p>}
-        {state?.job.limitations.map(text=><p key={text}>{text}</p>)}
+        {state?.job.limitations.map(text=><p key={text}>{text.replace(' Текстовый отчёт пока не подключён.','')}</p>)}
         {state?.queueState==="retry"&&<p>Ожидается автоматическая повторная попытка.</p>}
         {active&&state?.progress&&<p>{phases[state.progress.phase]}: {size(state.progress.bytes)}{state.progress.totalBytes===null?" · общий размер неизвестен":` / ${size(state.progress.totalBytes)}`}</p>}
         <div className="history-actions"><button disabled={busy||active} onClick={()=>void start()}>{state&&!active?"Повторить обработку":"Загрузить и разобрать"}</button>
           {active&&<button disabled={busy} onClick={()=>void cancel()}>Отменить обработку</button>}
           {imported&&<a href={`/api/replays/${encodeURIComponent(matchId)}/file?accountId=${encodeURIComponent(accountId)}`}>Скачать .dem{detail?.replay?` (${size(detail.replay.sizeBytes)})`:""}</a>}</div>
-        {!active&&imported&&<p className="muted">После успешного разбора доступны просмотр всей игры, приблизительная карта 7.40 и ручные проверки эпизодов. AI-тренер отложен после MVP.</p>}
+        {!active&&imported&&<p className="muted">После успешного разбора доступны просмотр всей игры, приблизительная карта 7.40, ручные проверки эпизодов и AI-тренер.</p>}
       </section>
       {state?.datasetId&&state.analysisId&&<><MatchCoach key={`${state.datasetId}:${state.analysisId}:${accountId}`} datasetId={state.datasetId} analysisId={state.analysisId} accountId={accountId}/><MatchAnalysis datasetId={state.datasetId} analysisId={state.analysisId} accountId={accountId} items={items}/></>}
       <section><h2>Импорт своего реплея</h2><p>Если файл недоступен у источника, выберите .dem, .dem.bz2 или .dem.zst. До 256 MiB; содержимое, матч и участник будут проверены.</p>
