@@ -10,6 +10,8 @@ export { enqueueCoach, executeCoach, readCoachRuns } from "./coach.js";
 export type { CoachMessage, CoachRun } from "./coach.js";
 export { coachConfig, coachInstructions, coachHash, coachBridgeRoot, atomicCoachFile, readCoachFile, validateCoachResponse, invokeCoachBridge } from "./coach-provider.js";
 export type { CoachConfig, CoachInput, CoachResponse, CoachUsage } from "./coach-provider.js";
+export { buildCoachInput, validateCoachOutput, parseCoachSettings, COACH_OUTPUT_SCHEMA } from "./coach-context.js";
+export type { CoachContext, CoachSettings, CoachOutput } from "./coach-context.js";
 export class JobError extends Error {
   constructor(readonly code: string, readonly retryable = false) { super(code); this.name = "JobError"; }
 }

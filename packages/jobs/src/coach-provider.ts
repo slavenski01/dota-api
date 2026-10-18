@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile, rename, stat } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { JobError } from "./index.js";
+import { canonical } from "@dota/analysis";
 
 export const COACH_PROVIDER_VERSION = "codex-cli-bridge-v1";
 export interface CoachConfig {
@@ -16,7 +17,7 @@ export interface CoachInput {
   instructions: { sha256: string; files: { name: string; content: string }[] };
   contextSha256: string; schemaVersion: string;
 }
-export const coachHash = (value: unknown): string => createHash("sha256").update(JSON.stringify(value)).digest("hex");
+export const coachHash = (value: unknown): string => createHash("sha256").update(canonical(value)).digest("hex");
 export function coachConfig(env: NodeJS.ProcessEnv = process.env): CoachConfig {
   function positive(name: string, fallback: number, maximum: number): number {
     const value = env[name] === undefined || env[name] === "" ? fallback : Number(env[name]);
