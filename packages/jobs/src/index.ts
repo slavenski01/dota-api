@@ -85,3 +85,6 @@ export { readEpisodeFrame } from "./episode-view.js";
 export type { EpisodeFrame, ViewerState } from "./episode-view.js";
 export { readEpisodeReviews, saveEpisodeReview } from "./episode-reviews.js";
 export type { ReviewHistory } from "./episode-reviews.js";
+
+export { readPlaybackWindow } from "./playback.js";
+export type { PlaybackWindow } from "./playback.js";

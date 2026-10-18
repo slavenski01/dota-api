@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { EpisodeFrame, ViewerState } from "@dota/jobs";
+import { usePlaybackFrame } from "../../../../../lib/use-playback-frame";
 import { useFrame } from "../../../../../lib/use-frame";
 import { gameTime } from "../../../../../lib/game-time";
 import { heroName as hero } from "../../../../../lib/hero-catalog";
@@ -15,13 +16,15 @@ export default function EpisodeViewer({ matchId, datasetId, episodeId, accountId
   const [mode, setMode] = useState(initialMode || "decision"), [time, setTime] = useState<number | null>(initialTime ? Number(initialTime) : null);
   const [retry, setRetry] = useState(0), [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const endpoint = `/api/datasets/${encodeURIComponent(datasetId)}/episodes/${encodeURIComponent(episodeId)}`;
-  const query = new URLSearchParams({ accountId, mode }); if (time !== null) query.set("time", String(time));
-  const { frame, error, pending } = useFrame<EpisodeFrame>(`${endpoint}/view?${query}`, JSON.stringify([matchId,datasetId,episodeId,accountId,mode]), matchId, retry);
+  const query = new URLSearchParams({ accountId, mode });
+  const bootstrap = useFrame<EpisodeFrame>(`${endpoint}/view?${query}`, JSON.stringify([matchId,datasetId,episodeId,accountId,mode]), matchId, retry);
+  const playback = usePlaybackFrame<EpisodeFrame>({datasetId,accountId,matchId,episodeId,mode,time:time ?? bootstrap.frame?.decisionTimeSeconds ?? NaN,retry,enabled:!!bootstrap.frame});
+  const frame = playback.frame, error = bootstrap.error ?? playback.error, pending = bootstrap.pending || playback.pending;
   function navigate(nextMode: string, nextTime: number | null) {
     setMode(nextMode); setTime(nextTime);
     const url = new URL(window.location.href); url.searchParams.set("mode", nextMode); if(nextTime === null)url.searchParams.delete("time");else url.searchParams.set("time", String(nextTime)); window.history.replaceState(null,"",url);
   }
-  const last = frame;
+  const last = bootstrap.frame;
   const slot = selectedSlot ?? frame?.playerSlot;
   const observation = frame?.states.find(s => s.playerSlot === slot), state = observation?.state;
   const back = `/matches/${encodeURIComponent(matchId)}?accountId=${encodeURIComponent(accountId)}`;

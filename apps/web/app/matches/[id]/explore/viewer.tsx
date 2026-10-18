@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { MatchExplorer, MatchFrame, MatchOverview, ViewerState } from "@dota/jobs";
 import type { GameEvent } from "@dota/contracts";
-import { useFrame } from "../../../../lib/use-frame";
+import { usePlaybackFrame } from "../../../../lib/use-playback-frame";
 import { api } from "../../../../lib/source-errors";
 import { gameTime } from "../../../../lib/game-time";
 import { heroName as hero } from "../../../../lib/hero-catalog";
@@ -38,7 +38,7 @@ export default function Explorer({ matchId }: { matchId: string }) {
   const time = rawTime === null ? 0 : rawTime.trim() ? Number(rawTime) : NaN;
   const slot = rawSlot === null ? view?.player.playerSlot : rawSlot.trim() ? Number(rawSlot) : NaN;
   const valid = view && ["decision","retrospective"].includes(mode) && Number.isFinite(time) && time >= view.window.startSeconds && time <= view.window.endSeconds && view.players.some(p=>p.playerSlot===slot);
-  const frameRead = useFrame<MatchFrame>(valid ? url("frame",{mode,time:String(time)}) : null, JSON.stringify([matchId,datasetId,accountId,mode]), matchId,retry);
+  const frameRead = usePlaybackFrame<MatchFrame>({datasetId,accountId,matchId,mode,time,retry,enabled:!!valid});
   const frame = frameRead.frame;
   const eventType = search.get("eventType") ?? "", eventPlayer = search.get("eventPlayer") ?? "", cursor = search.get("cursor") ?? "";
   const eventsRead = useRead<{ events: GameEvent[]; nextCursor: string | null; limitation: string }>(valid ? url("events",{mode,...(eventType?{type:eventType}:{}),...(eventPlayer?{playerSlot:eventPlayer}:{}),...(cursor?{cursor}:{})}) : null,retry);

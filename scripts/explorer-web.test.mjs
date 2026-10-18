@@ -47,6 +47,12 @@ test('production full-match HTTP without episodes: direct links, frames, filters
   assert.deepEqual((await(await fetch(endpoint+'&resource=events&mode=decision')).json()).events,[]);
   const first=await(await fetch(endpoint+'&resource=events')).json();assert.equal(first.events.length,100);assert.ok(first.nextCursor);
   const second=await(await fetch(endpoint+'&resource=events&cursor='+first.nextCursor)).json();assert.equal(second.events.length,100);assert.notEqual(first.events.at(-1).id,second.events[0].id);
+  const intervalUrl=endpoint+'&resource=playback&version=playback-v1&bucket=20';
+  const interval=await(await fetch(intervalUrl)).json();assert.equal(interval.version,'playback-v1');assert.equal(interval.start,600);assert.ok(interval.states.length);
+  const decisionInterval=await(await fetch(intervalUrl+'&mode=decision')).json();assert.deepEqual(decisionInterval.states,[]);assert.deepEqual(decisionInterval.motion,[]);
+  for(const suffix of ['&from=0','&bucket=21'])assert.equal((await fetch(intervalUrl+suffix)).status,400);
+  assert.equal((await fetch(intervalUrl.replace('bucket=20','bucket=20.5'))).status,400);
+  assert.equal((await fetch(intervalUrl.replace('playback-v1','wrong'))).status,400);
   const notesUrl=`${baseUrl}/api/datasets/explore-web/notes?accountId=1`;
   const payload={id:randomUUID(),time:600,playerSlot:128,mode:'retrospective',content:'Сверить позицию на десятой минуте'};
   const post=(body,origin=baseUrl)=>fetch(notesUrl,{method:'POST',headers:{'Content-Type':'application/json',Origin:origin},body:JSON.stringify(body)});
@@ -74,7 +80,7 @@ test('production full-match HTTP without episodes: direct links, frames, filters
     await pool.query('INSERT INTO dota.dataset_checks VALUES ($1,$2,$3)',[edgeId,ctx.validation.version,{...ctx.validation,datasetId:edgeId,coverage:ctx.validation.coverage.map(c=>({...c,datasetId:edgeId}))}]);
     await storeStateSegments(pool,new LocalStorage(root),edgeId,samples);
     // Browser-only failure injection at a separate loopback origin. Production assets remain untouched.
-    const imageRequests=new Map();
+    const imageRequests=new Map(), playbackRequests=new Map();
     const failedFrames=new Set();
     iconPreview=createHttpServer((req,res)=>{
       if(req.url.startsWith('/heroes/')){
@@ -83,6 +89,7 @@ test('production full-match HTTP without episodes: direct links, frames, filters
       }
       const requested=new URL(req.url,'http://preview.local');
       const at=requested.searchParams.get('time');
+      if(requested.searchParams.get('resource')==='playback')playbackRequests.set(req.url,(playbackRequests.get(req.url)??0)+1);
       const isFrame=requested.searchParams.get('resource')==='frame'||requested.pathname.endsWith('/view');
       if(isFrame&&at==='603'&&!failedFrames.has(req.url)){failedFrames.add(req.url);res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'temporary_unavailable'}));return;}
       const proxy=httpRequest(baseUrl+req.url,{method:req.method,headers:req.headers},upstream=>{const send=()=>{res.writeHead(upstream.statusCode,upstream.headers);upstream.pipe(res);};if(isFrame&&at==='601')setTimeout(send,3000);else if(isFrame&&at==='602')setTimeout(send,500);else send();});
@@ -98,6 +105,7 @@ test('production full-match HTTP without episodes: direct links, frames, filters
     console.log(`Explorer preview: ${baseUrl}${path}`);
     console.log(`Episode preview: ${baseUrl}/matches/1/episodes/${episode.id}?accountId=1&datasetId=explore-web&mode=retrospective&time=600`);
     while(true){try{await access(process.env.EXPLORER_PREVIEW_GATE);break;}catch{}await delay(500);}
+    console.log('Playback requests:',JSON.stringify(Object.fromEntries(playbackRequests)));
     console.log('Icon preview requests:',JSON.stringify(Object.fromEntries(imageRequests)));
   }
  }finally{if(iconPreview){iconPreview.closeAllConnections();await new Promise(r=>iconPreview.close(r));}if(web&&web.exitCode===null){const ended=once(web,'exit');web.kill('SIGTERM');await ended;}await pool.end();await rm(root,{recursive:true,force:true});}
