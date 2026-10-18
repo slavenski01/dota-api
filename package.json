@@ -30,6 +30,7 @@
     "test:backup": "node --test scripts/backup.test.mjs",
     "test:ops": "DOTA_TEST_DOCKER=1 node --test scripts/ops.test.mjs",
     "test:contracts": "node --test scripts/contracts.test.mjs",
+    "check:hero-icons": "node scripts/sync-hero-icons.mjs --check",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
     "test:persistence": "node scripts/test-postgres.mjs scripts/persistence.test.mjs",
     "test:storage": "node scripts/test-postgres.mjs scripts/storage.test.mjs",
@@ -60,7 +61,8 @@
   },
   "devDependencies": {
     "@types/node": "26.6.5",
-    "typescript": "5.9.3",
-    "embedded-postgres": "18.4.0-beta.17"
+    "embedded-postgres": "18.4.0-beta.17",
+    "sharp": "0.35.5",
+    "typescript": "5.9.3"
   }
 }
