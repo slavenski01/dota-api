@@ -4,7 +4,7 @@
 и импорт реплеев, разбор Kotlin/Clarity, карта всей игры, статистика десяти
 игроков, события, графики HP/маны и собственные заметки.
 
-**E00–E08, E12, E10, E13 и E14 завершены; M3 принят 13 октября 2026 года.** Реальный матч
+**E00–E08, E12, E10, E13–E15 завершены; M4 принят 18 октября 2026 года.** Реальный матч
 прошёл весь путь, остановку worker, перезапуск сервисов и восстановление копии.
 [Протокол приёмки](docs/mvp-acceptance.md) · [релизный чек-лист](docs/release-checklist.md).
 18 октября 2026 года завершён E13: 127 локальных иконок, портреты на картах игры
@@ -15,7 +15,9 @@ E14 добавляет устойчивую карту, координаты п�
 в прежнем наборе. [Ограничения, измерения и проверки](docs/playback.md).
 E08 добавляет AI-тренера через текущую подписку Codex: сводка, до трёх
 проверяемых эпизодов, одно действие и история версий. [Качество и ограничения](docs/coach-quality.md).
-Следующий эпик — совместный разбор и приёмка E15. API-ключ для тренера не нужен.
+E15 связывает версию отчёта с точным моментом, заметками и ручными оценками.
+Переходы, перезапуск и backup/restore проверены на четырёх реальных матчах:
+[приёмка M4](docs/iteration-acceptance.md). API-ключ для тренера не нужен.
 Сравнения E09 и видео E11 остаются отложенными.
 
 ## Быстрый запуск
@@ -148,6 +150,10 @@ npm run test:match-notes
 npm run test:explorer-web
 npm run test:replay-web
 npm run test:backup
+npm run test:coach-web
+npm run test:coach-context
+npm run test:coach-provider
+npm run test:coach-quality
 node scripts/sync-task-board.mjs --check
 ```
 
@@ -181,7 +187,7 @@ production web и Kotlin CLI; Gradle Wrapper включён в репозито�
 | `packages/persistence`, `packages/jobs` | Хранение, источники, очередь и обработка |
 | `scripts` | Миграции, проверки, эксплуатация и приёмка |
 | [Архитектура](docs/architecture.md) | Действующие связи, инварианты и границы |
-| [План](tasks-plan.md), [доска](tasks-board.html) | 52 DONE, 1 TODO, 6 SKIPPED; далее E15-T03 |
+| [План](tasks-plan.md), [доска](tasks-board.html) | 53 DONE, 0 TODO, 6 SKIPPED; M4 принят |
 | [Контракты](docs/contracts.md), [хранение](docs/persistence.md) | Форматы, версии и транзакции |
 | [Источники](docs/profiles-and-history.md), [реплеи](docs/replay-import.md) | API и обработка недоступности |
 | [Аналитика](docs/analysis.md), [эпизоды](docs/episode-viewer.md) | Готовые метрики и ручные оценки |
