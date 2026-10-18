@@ -25,7 +25,8 @@ export async function readMatchExplorer(pool: Pool, datasetId: string, accountId
   const timeCoverage = validation.coverage.filter(c => c.field === "time" && c.status === "present");
   const window = { startSeconds: Math.min(0, bounds.start ?? 0, ...timeCoverage.map(c => c.window.startSeconds)),
     endSeconds: Math.max(match.durationSeconds ?? 0, bounds.end ?? 0, ...timeCoverage.map(c => c.window.endSeconds)) };
-  return { datasetId, match, player: selected[0]!, players, window,
+  const motionAvailable = !!(await pool.query("SELECT 1 FROM dota.motion_segments WHERE dataset_id=$1 LIMIT 1", [datasetId])).rowCount;
+  return { datasetId, motionAvailable, match, player: selected[0]!, players, window,
     coverage: validation.coverage, limitations: ["Доступные проверенные данные. Пропуски не означают отсутствие событий.", "Карта приблизительная; командный обзор и готовность способностей не подтверждены."] };
 }
 export type MatchExplorer = Awaited<ReturnType<typeof readMatchExplorer>>;

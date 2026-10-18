@@ -44,6 +44,16 @@ export function validateRecord(input: unknown): ContractRecord {
     case "participant":
       requireCondition(input.team === (input.playerSlot < 128 ? "radiant" : "dire"), "slot_team_mismatch");
       break;
+    case "hero_motion": {
+      const rows = input.samples;
+      requireCondition(rows.at(-1)!.time - rows[0]!.time < 30, "invalid_motion_window");
+      rows.forEach((row, i) => {
+        requireCondition((row.x === null) === (row.y === null), "partial_motion_position");
+        requireCondition(row.x !== null || row.breakBefore !== null, "unknown_motion_boundary");
+        if (i) requireCondition(row.time > rows[i-1]!.time && row.tick > rows[i-1]!.tick, "unordered_motion");
+      });
+      break;
+    }
     case "hero_state":
       if (input.perspective.mode === "team" && !(input.visibility.status === "known" && input.visibility.value === "visible")) {
         for (const field of [input.position, input.hp, input.mana, input.alive, input.inventory, input.resources]) {

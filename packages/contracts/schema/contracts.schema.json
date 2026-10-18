@@ -1523,11 +1523,22 @@
         "mapContext": {
           "type": "object",
           "properties": {
-            "backgroundVersion": { "$ref": "#/definitions/Text" },
-            "projectionVersion": { "$ref": "#/definitions/Text" },
-            "imageSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+            "backgroundVersion": {
+              "$ref": "#/definitions/Text"
+            },
+            "projectionVersion": {
+              "$ref": "#/definitions/Text"
+            },
+            "imageSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
           },
-          "required": ["backgroundVersion", "projectionVersion", "imageSha256"],
+          "required": [
+            "backgroundVersion",
+            "projectionVersion",
+            "imageSha256"
+          ],
           "additionalProperties": false
         },
         "material": {
@@ -1868,6 +1879,9 @@
         },
         {
           "$ref": "#/definitions/Report"
+        },
+        {
+          "$ref": "#/definitions/HeroMotion"
         }
       ]
     },
@@ -2026,6 +2040,109 @@
         "requestId",
         "replayPath",
         "expectedMatchId"
+      ],
+      "additionalProperties": false
+    },
+    "MotionSample": {
+      "type": "object",
+      "properties": {
+        "time": {
+          "type": "number"
+        },
+        "tick": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "x": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "y": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "alive": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "breakBefore": {
+          "enum": [
+            "start",
+            "gap",
+            "jump",
+            "life",
+            "unknown",
+            null
+          ]
+        }
+      },
+      "required": [
+        "time",
+        "tick",
+        "x",
+        "y",
+        "alive",
+        "breakBefore"
+      ],
+      "additionalProperties": false
+    },
+    "HeroMotion": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "0.1.0"
+        },
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "matchId": {
+          "$ref": "#/definitions/DecimalId"
+        },
+        "provenance": {
+          "$ref": "#/definitions/Provenance"
+        },
+        "playerSlot": {
+          "$ref": "#/definitions/PlayerSlot"
+        },
+        "kind": {
+          "const": "hero_motion"
+        },
+        "formatVersion": {
+          "const": "motion-v1"
+        },
+        "stepSeconds": {
+          "enum": [
+            0.1,
+            0.25,
+            0.5,
+            1
+          ]
+        },
+        "samples": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1600,
+          "items": {
+            "$ref": "#/definitions/MotionSample"
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "id",
+        "matchId",
+        "provenance",
+        "playerSlot",
+        "kind",
+        "formatVersion",
+        "stepSeconds",
+        "samples"
       ],
       "additionalProperties": false
     }

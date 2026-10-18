@@ -62,6 +62,7 @@ export async function insertRecords(client: PoolClient, datasetId: string, input
   const records = input.map(validateRecord);
   for (const record of records) {
     if (record.kind === "job") throw new Error("job_is_not_dataset_record");
+    if (record.kind === "hero_motion") throw new Error("motion_requires_segments");
     await client.query("INSERT INTO dota.records(dataset_id,payload) VALUES ($1,$2)", [datasetId, record]);
     for (const slot of new Set(relatedSlots(record))) {
       await client.query("INSERT INTO dota.record_participants VALUES ($1,$2,$3,$4)", [datasetId, record.id, record.matchId, slot]);
@@ -108,3 +109,5 @@ export type { MatchFilters, MatchListItem } from "./match-list.js";
 export { REPLAY_MEDIA_TYPE, replayMatchId, replayUrl, replayRequest, verifiedReplay, resolveReplay } from "./replays.js";
 export type { ReplaySource } from "./replays.js";
 export { stateAt } from "./state-index.js";
+
+export { prepareMotionSegments, readMotionWindow } from "./motion.js";

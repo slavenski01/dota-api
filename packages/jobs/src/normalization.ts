@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { encodeRequest, readMessages, type ContractRecord } from "@dota/contracts";
-import { artifactById, prepareStateSegments, saveDatasetInTransaction, type Pool, type Storage } from "@dota/persistence";
+import { artifactById, prepareMotionSegments, prepareStateSegments, saveDatasetInTransaction, type Pool, type Storage } from "@dota/persistence";
 import { runBoundedProcess } from "./process.js";
 import { JobError } from "./index.js";
 import type { StageHandler } from "./workflow.js";
@@ -19,7 +19,7 @@ export async function decodeDataset(stdout: Buffer, requestId: string, matchId: 
     if (message.type !== "record") continue;
     const record = message.record;
     if (record.matchId !== matchId || record.provenance.artifactId !== `replay-sha256-${sha256}` ||
-      !["match", "participant", "event", "coverage", "hero_state"].includes(record.kind)) throw new JobError("invalid_parser_output");
+      !["match", "participant", "event", "coverage", "hero_state", "hero_motion"].includes(record.kind)) throw new JobError("invalid_parser_output");
     record.provenance.artifactId = artifactId;
     if (record.kind === "coverage") record.datasetId = datasetId;
     records.push(record);
@@ -57,8 +57,10 @@ export function normalizationHandler(pool: Pool, storage: Storage): StageHandler
       const records = await decodeDataset(result.stdout, requestId, row.match_id, artifact.sha256, artifactId, datasetId);
       const states = records.filter(record => record.kind === "hero_state");
       const saveSegments = await prepareStateSegments(storage, datasetId, row.match_id, states);
+      const saveMotion = await prepareMotionSegments(storage, datasetId, row.match_id, records.filter(r => r.kind === "hero_motion"));
       const buckets = new Set<string>();
       const indexed = records.filter(record => {
+        if (record.kind === "hero_motion") return false;
         if (record.kind !== "hero_state") return true;
         const key = `${record.playerSlot}:${Math.floor(record.gameTimeSeconds / 5)}`;
         if (buckets.has(key)) return false;
@@ -72,6 +74,7 @@ export function normalizationHandler(pool: Pool, storage: Storage): StageHandler
           await saveDatasetInTransaction(client, { id: datasetId, matchId: row.match_id, parserRunId,
             normalizationVersion: row.versions.normalization, inputSha256: artifact.sha256, versions: { ...row.versions } }, indexed);
           await saveSegments(client);
+          await saveMotion(client);
         } };
     } finally { await rm(directory, { recursive: true, force: true }); }
   };

@@ -37,6 +37,15 @@ object ContractValidator {
         checkTimes(node, if (node["kind"].asText() == "hero_state") node["gameTimeSeconds"].asDouble() else null)
         when (node["kind"].asText()) {
             "participant" -> requireValid(node["team"].asText() == if (node["playerSlot"].asInt() < 128) "radiant" else "dire", "slot_team_mismatch")
+            "hero_motion" -> {
+                val rows = node["samples"].toList()
+                requireValid(rows.last()["time"].asDouble() - rows.first()["time"].asDouble() < 30, "invalid_motion_window")
+                rows.forEachIndexed { i, row ->
+                    requireValid(row["x"].isNull == row["y"].isNull, "partial_motion_position")
+                    requireValid(!row["x"].isNull || !row["breakBefore"].isNull, "unknown_motion_boundary")
+                    if (i > 0) requireValid(row["time"].asDouble() > rows[i-1]["time"].asDouble() && row["tick"].asInt() > rows[i-1]["tick"].asInt(), "unordered_motion")
+                }
+            }
             "hero_state" -> {
                 val visible = node["visibility"]["status"].asText() == "known" && node["visibility"]["value"].asText() == "visible"
                 if (node["perspective"]["mode"].asText() == "team" && !visible) {

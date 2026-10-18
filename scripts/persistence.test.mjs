@@ -8,7 +8,7 @@ const pool = openDatabase(process.env.TEST_DATABASE_URL);
 const fixture = JSON.parse(await readFile(new URL("../packages/contracts/fixtures/records.json", import.meta.url)));
 const participant = fixture.find(r => r.kind === "participant");
 const slots = [0,1,2,3,4,128,129,130,131,132];
-const baseRecords = fixture.filter(r => !["job","participant"].includes(r.kind));
+const baseRecords = fixture.filter(r => !["job","participant","hero_motion"].includes(r.kind));
 baseRecords.push(...slots.map(playerSlot => ({ ...participant, id: `participant-${playerSlot}`, playerSlot, team: playerSlot < 128 ? "radiant" : "dire" })));
 const dataset = { id: "dataset-1", matchId: participant.matchId, parserRunId: null, normalizationVersion: "test", inputSha256: "a".repeat(64), versions: { parser: "fixture" } };
 before(async () => { await migrate(pool); });

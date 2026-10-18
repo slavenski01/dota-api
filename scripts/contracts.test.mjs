@@ -40,8 +40,8 @@ function kotlin(input, mode = "--validate-ndjson") {
   return result;
 }
 
-test("all eight record kinds validate and round-trip through Kotlin without changing IDs, null, zero or time", async () => {
-  assert.equal(new Set(records.map(record => record.kind)).size, 8);
+test("all nine record kinds validate and round-trip through Kotlin without changing IDs, null, zero or time", async () => {
+  assert.equal(new Set(records.map(record => record.kind)).size, 9);
   records.forEach(record => assert.deepEqual(validateRecord(record), record));
   assert.deepEqual(await read(validMessages.map(encodeMessage).join(""), 1), validMessages);
   const result = kotlin(validStream);
@@ -174,4 +174,11 @@ test("encoders validate before writing and reject non-finite numbers", () => {
   assert.throws(() => encodeMessage({ ...complete(0), sequence: Number.NaN }));
   assert.throws(() => encodeRequest({ ...JSON.parse(requestText), expectedMatchId: 42 }));
   assert.throws(() => validateMessage(message({ ...records[0], durationSeconds: Infinity })));
+});
+
+
+test("motion format rejects duplicate time, backwards ticks, partial coordinates and oversized windows in both runtimes", () => {
+ const track=records.find(r=>r.kind==='hero_motion');
+ const changes=[t=>t.samples[1].time=t.samples[0].time,t=>t.samples[1].tick=t.samples[0].tick,t=>t.samples[1].x=null,t=>t.samples[1].time=31,t=>{t.samples[1].x=null;t.samples[1].y=null;}];
+ for(const change of changes){const invalid=structuredClone(track);change(invalid);assert.throws(()=>validateRecord(invalid));assert.notEqual(kotlin(wire([message(invalid),complete(1)])).status,0);}
 });

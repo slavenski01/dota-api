@@ -68,6 +68,7 @@ export default function Explorer({ matchId }: { matchId: string }) {
     {view && <>
       <HeroPreloads heroIds={view.players.map(p => p.heroId)}/>
       <p className="muted">Игрок {accountId} · {view.match.radiantWin===null ? "результат неизвестен" : view.match.radiantWin ? "Победа Radiant" : "Победа Dire"} · длительность {view.match.durationSeconds===null?"неизвестна":gameTime(view.match.durationSeconds)} · патч {view.match.patch ?? "неизвестен"}. {view.limitations.join(" ")}</p>
+      {!view.motionAvailable && <p className="notice">В этом наборе сохранены редкие состояния. Для более частых координат выберите «Повторить обработку» на странице матча. Заметки и отчёты останутся в исходном наборе.</p>}
       {!valid && <p role="alert">Некорректные время, герой или перспектива в ссылке. <button onClick={()=>navigate({time:"0",hero:String(view.player.playerSlot),mode:"retrospective"})}>Открыть начало игры</button></p>}
       <section className="explorer-controls"><h2>Время и перспектива</h2><div className="filters">
         <label>Перспектива<select value={mode} onChange={e=>navigate({mode:e.target.value,cursor:null})}><option value="retrospective">Полный ретроспективный обзор</option><option value="decision">Команда выбранного игрока</option></select></label>

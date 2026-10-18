@@ -620,5 +620,39 @@
     },
     "lastKnownPosition": null,
     "coverageIds": []
+  },
+  {
+    "schemaVersion": "0.1.0",
+    "kind": "hero_motion",
+    "id": "motion-fixture",
+    "matchId": "9007199254740993",
+    "provenance": {
+      "source": "fixture",
+      "acquiredAt": "2026-10-12T00:00:00Z",
+      "artifactId": "synthetic-example",
+      "sourceVersion": "0.1.0",
+      "inputIds": []
+    },
+    "playerSlot": 0,
+    "formatVersion": "motion-v1",
+    "stepSeconds": 0.25,
+    "samples": [
+      {
+        "time": -0.25,
+        "tick": 100,
+        "x": 0,
+        "y": -20,
+        "alive": true,
+        "breakBefore": "start"
+      },
+      {
+        "time": 0,
+        "tick": 108,
+        "x": 10,
+        "y": -20,
+        "alive": true,
+        "breakBefore": null
+      }
+    ]
   }
 ]
