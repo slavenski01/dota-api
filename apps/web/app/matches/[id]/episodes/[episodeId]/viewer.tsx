@@ -6,11 +6,12 @@ import { usePlayback } from "../../../../../lib/use-playback";
 import PlaybackControls from "../../../../components/playback-controls";
 import { useLocalTime } from "../../../../../lib/use-local-time";
 import { visualPositions } from "../../../../../lib/visual-motion";
-import type { EpisodeFrame, ViewerState } from "@dota/jobs";
+import type { CoachEpisodeView, EpisodeFrame, ViewerState } from "@dota/jobs";
 import { usePlaybackFrame } from "../../../../../lib/use-playback-frame";
 import { useFrame } from "../../../../../lib/use-frame";
 import { gameTime } from "../../../../../lib/game-time";
 import { heroName as hero } from "../../../../../lib/hero-catalog";
+import {coachReportLink} from '../../../../../lib/coach-links';
 import { HeroPreloads } from "../../../../components/hero-portrait";
 import resources from "../../../../../../../services/replay-parser/src/main/resources/resource-ids.json";
 import EpisodeReviews from "./reviews";
@@ -20,9 +21,13 @@ const numeric = (field: ViewerState["hp"] | undefined) => field?.status === "kno
 export default function EpisodeViewer({ matchId, datasetId, episodeId, accountId, initialMode, initialTime }: { matchId: string; datasetId: string; episodeId: string; accountId: string; initialMode: string; initialTime: string }) {
   const search=useSearchParams(),mode=search.get("mode") ?? (initialMode || "decision");
   const [retry,setRetry]=useState(0);
+  const reportId=search.get('reportId'),analysisId=search.get('analysisId'),fromCoach=search.has('reportId')||search.has('analysisId');
+  const coachUrl=fromCoach?`/api/datasets/${encodeURIComponent(datasetId)}/coach?${new URLSearchParams({accountId,analysisId:analysisId??'',reportId:reportId??'',episodeId,mode})}`:null;
+  const coach=useFrame<CoachEpisodeView>(coachUrl,coachUrl??'',matchId,retry);
   const endpoint = `/api/datasets/${encodeURIComponent(datasetId)}/episodes/${encodeURIComponent(episodeId)}`;
   const query = new URLSearchParams({ accountId, mode });
-  const bootstrap = useFrame<EpisodeFrame>(`${endpoint}/view?${query}`, JSON.stringify([matchId,datasetId,episodeId,accountId,mode]), matchId, retry);
+  const authorized=!fromCoach||!!coach.frame;
+  const bootstrap = useFrame<EpisodeFrame>(authorized?`${endpoint}/view?${query}`:null, JSON.stringify([matchId,datasetId,episodeId,accountId,mode,coachUrl]), matchId, retry);
   const metadataKey=JSON.stringify([matchId,datasetId,episodeId,accountId]);
   const [metadata,setMetadata]=useState<{key:string;value:Pick<EpisodeFrame,"window"|"decisionTimeSeconds"|"playerSlot"|"heroes"|"time">}|null>(null);
   useEffect(()=>{if(bootstrap.frame){const {window,decisionTimeSeconds,playerSlot,heroes,time}=bootstrap.frame;setMetadata({key:metadataKey,value:{window,decisionTimeSeconds,playerSlot,heroes,time}});}},[bootstrap.frame,metadataKey]);
@@ -31,9 +36,9 @@ export default function EpisodeViewer({ matchId, datasetId, episodeId, accountId
   const timeline=useLocalTime(search.has("time") && !rawTime.trim() ? NaN : rawTime ? Number(rawTime) : last?.decisionTimeSeconds ?? NaN,JSON.stringify([matchId,datasetId,episodeId,accountId,mode]));
   const time=timeline.time;
   const rawSlot=search.get("hero"),slot=rawSlot===null ? last?.playerSlot : rawSlot.trim() ? Number(rawSlot) : NaN;
-  const valid=!!last && Number.isFinite(time) && time>=last.window.startSeconds && time<=last.window.endSeconds && last.heroes.some(h=>h.playerSlot===slot);
+  const valid=authorized && !!last && Number.isFinite(time) && time>=last.window.startSeconds && time<=last.window.endSeconds && last.heroes.some(h=>h.playerSlot===slot);
   const playback = usePlaybackFrame<EpisodeFrame>({datasetId,accountId,matchId,episodeId,mode,time,retry,enabled:valid});
-  const frame = playback.frame, error = bootstrap.error ?? playback.error, pending = bootstrap.pending || playback.pending;
+  const frame = authorized?playback.frame:null, error = coach.error ?? bootstrap.error ?? playback.error, pending = coach.pending || bootstrap.pending || playback.pending;
   const controls=usePlayback({key:JSON.stringify([matchId,datasetId,episodeId,accountId,search.toString()]),time,end:last?.window.endSeconds ?? 0,enabled:valid,ready:playback.ready,setTime:timeline.set,commit:at=>navigate(mode,at)});
   function navigate(nextMode: string, nextTime: number | null, nextSlot=slot) {
     controls.stop();
@@ -48,7 +53,17 @@ export default function EpisodeViewer({ matchId, datasetId, episodeId, accountId
   const commitScrub=()=>navigate(mode,timeline.finish());
   const observation = frame?.states.find(s => s.playerSlot === slot), state = observation?.state;
   const back = `/matches/${encodeURIComponent(matchId)}?accountId=${encodeURIComponent(accountId)}`;
-  return <main className="episode-page"><Link href={back}>← К матчу {matchId}</Link><p className="eyebrow">ПРОВЕРКА ЭПИЗОДА</p><h1>Контекст решения</h1>
+  return <main className="episode-page"><Link href={back}>← К матчу {matchId}</Link>
+    {fromCoach&&reportId&&analysisId&&<p><Link href={coachReportLink(matchId,datasetId,analysisId,accountId,reportId)}>← К исходной версии отчёта{coach.frame?` ${coach.frame.version}`:''}</Link></p>}
+    <p className="eyebrow">ПРОВЕРКА ЭПИЗОДА</p><h1>Контекст решения</h1>
+    {coach.frame&&<section aria-label="Рекомендация тренера"><h2>Рекомендация из версии {coach.frame.version}</h2>
+      {coach.frame.retrospective?<><p><strong>Гипотеза:</strong> {coach.frame.retrospective.hypothesis}</p><p><strong>Вопрос к просмотру:</strong> {coach.frame.retrospective.question}</p>
+        <details><summary>Проверяемые основания</summary><ul>{coach.frame.retrospective.facts.map(f=><li key={f.id}>{f.text}<small className="coach-hash"> · {f.evidenceIds.join(', ')}</small></li>)}</ul>
+          {coach.frame.retrospective.limitations.map((text,i)=><p key={i}>{text}</p>)}
+          <ul className="coach-hash">{coach.frame.retrospective.evidence.map(e=><li key={e.id}>{e.id} · {e.time===null?'без игрового времени':gameTime(e.time)} · SHA-256 {e.sha256}</li>)}</ul></details></>:<p>Гипотеза и основания относятся к ретроспективе и скрыты в перспективе команды.</p>}
+      <p>Запрошенное окно: {gameTime(coach.frame.requestedWindow.startSeconds)}–{gameTime(coach.frame.requestedWindow.endSeconds)}. Доступно в записи: {gameTime(coach.frame.window.startSeconds)}–{gameTime(coach.frame.window.endSeconds)}.</p>
+      <button disabled={!valid} onClick={()=>navigate(mode,coach.frame!.window.startSeconds,coach.frame!.playerSlot)}>К началу отрезка</button>
+    </section>}
     <p>Игрок {accountId}. Автоматический отбор — повод для проверки, не подтверждение ошибки.</p>
     <section><label>Перспектива <select aria-label="Перспектива" value={mode} onChange={e => navigate(e.target.value,time ?? last?.time ?? null)}><option value="decision">Команда выбранного игрока</option><option value="retrospective">Полный ретроспективный обзор</option></select></label>
       {last && <><p>Окно {gameTime(last.window.startSeconds)}–{gameTime(last.window.endSeconds)} · момент решения {gameTime(last.decisionTimeSeconds)}</p>
@@ -77,6 +92,6 @@ export default function EpisodeViewer({ matchId, datasetId, episodeId, accountId
         <a href={`${endpoint}?accountId=${encodeURIComponent(accountId)}`}>Исходные основания и версии эпизода</a>
       </section>}
     </>}
-    {last && <EpisodeReviews endpoint={endpoint} accountId={accountId} playerSlot={last.playerSlot}/>}
+    {authorized && last && <EpisodeReviews endpoint={endpoint} accountId={accountId} playerSlot={last.playerSlot}/>}
   </main>;
 }

@@ -1,8 +1,8 @@
 import { saveDataset, transaction } from '@dota/persistence';
 import { analysisHandler, defaultVersions, buildCoachInput } from '@dota/jobs';
 import { fixture, death, objective } from './analysis.mjs';
-export async function coachFixture(pool, settings={role:null,goal:'overview'}) {
-  const ctx=fixture([death('death-1',100),objective('tower-1',130)]);
+export async function coachFixture(pool, settings={role:null,goal:'overview'}, events=[death('death-1',100),objective('tower-1',130)]) {
+  const ctx=fixture(events);
   await saveDataset(pool,{id:'dataset',matchId:'1',parserRunId:null,normalizationVersion:'fixture',inputSha256:'a'.repeat(64),versions:{}},ctx.records);
   await pool.query('INSERT INTO dota.dataset_checks(dataset_id,version,payload) VALUES ($1,$2,$3)',['dataset',ctx.validation.version,ctx.validation]);
   const analysis=await analysisHandler(pool)({row:{dataset_id:'dataset',account_id:'1',analysis_options:null,versions:await defaultVersions()},signal:new AbortController().signal,steps:{}});

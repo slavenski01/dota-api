@@ -4,6 +4,7 @@ import { JobError } from "./index.js";
 import { readEpisode } from "./analysis.js";
 import { readEpisodeFrame, type EpisodeFrame } from "./episode-view.js";
 import { readMatchExplorer, readMatchFrame, type MatchFrame, type ViewMode } from "./match-explorer.js";
+import { episodeViewingWindow } from './episode-window.js';
 
 export const PLAYBACK_VERSION = "playback-v1";
 export const PLAYBACK_SECONDS = 30;
@@ -16,7 +17,7 @@ export async function readPlaybackWindow(pool: Pool, storage: Storage, datasetId
   mode: ViewMode, bucket: number, version: string, episodeId?: string): Promise<PlaybackWindow> {
   if (version !== PLAYBACK_VERSION || !Number.isSafeInteger(bucket) || !["retrospective","decision"].includes(mode)) throw new JobError("invalid_context_request");
   const view = await readMatchExplorer(pool, datasetId, accountId);
-  const window = episodeId ? (await readEpisode(pool,datasetId,accountId,episodeId)).episode.window : view.window;
+  const window = episodeId ? episodeViewingWindow((await readEpisode(pool,datasetId,accountId,episodeId)).episode,view.window) : view.window;
   const start = Math.max(window.startSeconds,bucket*PLAYBACK_SECONDS), end = Math.min(window.endSeconds,(bucket+1)*PLAYBACK_SECONDS);
   if (start > end || (bucket+1)*PLAYBACK_SECONDS <= window.startSeconds) throw new JobError("invalid_context_request");
   const frame = episodeId ? await readEpisodeFrame(pool,storage,datasetId,accountId,episodeId,mode,start)

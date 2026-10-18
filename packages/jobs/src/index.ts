@@ -12,8 +12,8 @@ export { coachConfig, coachInstructions, coachHash, coachBridgeRoot, atomicCoach
 export type { CoachConfig, CoachInput, CoachResponse, CoachUsage } from "./coach-provider.js";
 export { buildCoachInput, validateCoachOutput, parseCoachSettings, COACH_OUTPUT_SCHEMA } from "./coach-context.js";
 export type { CoachContext, CoachSettings, CoachOutput } from "./coach-context.js";
-export { requestCoachReport, readCoachReports } from "./coach-view.js";
-export type { CoachReportView } from "./coach-view.js";
+export { requestCoachReport, readCoachReports, readCoachEpisode } from "./coach-view.js";
+export type { CoachReportView, CoachEpisodeView } from "./coach-view.js";
 export class JobError extends Error {
   constructor(readonly code: string, readonly retryable = false) { super(code); this.name = "JobError"; }
 }

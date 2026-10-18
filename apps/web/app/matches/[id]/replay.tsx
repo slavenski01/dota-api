@@ -72,7 +72,7 @@ export default function MatchReplay({ matchId, accountId, items }: { matchId: st
           {imported&&<a href={`/api/replays/${encodeURIComponent(matchId)}/file?accountId=${encodeURIComponent(accountId)}`}>Скачать .dem{detail?.replay?` (${size(detail.replay.sizeBytes)})`:""}</a>}</div>
         {!active&&imported&&<p className="muted">После успешного разбора доступны просмотр всей игры, приблизительная карта 7.40, ручные проверки эпизодов и AI-тренер.</p>}
       </section>
-      {state?.datasetId&&state.analysisId&&<><MatchCoach key={`${state.datasetId}:${state.analysisId}:${accountId}`} datasetId={state.datasetId} analysisId={state.analysisId} accountId={accountId}/><MatchAnalysis datasetId={state.datasetId} analysisId={state.analysisId} accountId={accountId} items={items}/></>}
+      {state?.datasetId&&state.analysisId&&<><MatchCoach key={`${state.datasetId}:${state.analysisId}:${accountId}`} matchId={matchId} datasetId={state.datasetId} analysisId={state.analysisId} accountId={accountId}/><MatchAnalysis datasetId={state.datasetId} analysisId={state.analysisId} accountId={accountId} items={items}/></>}
       <section><h2>Импорт своего реплея</h2><p>Если файл недоступен у источника, выберите .dem, .dem.bz2 или .dem.zst. До 256 MiB; содержимое, матч и участник будут проверены.</p>
         <label>Файл реплея <input type="file" accept=".dem,.bz2,.zst" disabled={busy||active} onChange={e=>setFile(e.target.files?.[0]??null)}/></label>
         <button disabled={!file||busy||active} onClick={importFile}>Импортировать</button>

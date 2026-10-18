@@ -26,7 +26,7 @@ export function errorResponse(error: unknown): Response {
     return response;
   }
   const code = error instanceof JobError ? error.code : "service_unavailable";
-  if(code.startsWith('coach_')) return json({error:code},code==='coach_invalid_request'?400:code==='coach_request_conflict'?409:code==='coach_budget_exhausted'?429:503);
+  if(code.startsWith('coach_')) return json({error:code},code==='coach_invalid_request'?400:['coach_report_not_found','coach_episode_unavailable'].includes(code)?404:['coach_request_conflict','coach_version_unsupported'].includes(code)?409:code==='coach_budget_exhausted'?429:503);
   const status = ["analysis_not_found", "episode_not_found", "job_not_found", "dataset_not_validated"].includes(code) ? 404 : ["invalid_note", "invalid_review", "review_requires_alternative", "review_map_unavailable", "invalid_analysis_request", "invalid_analysis_options", "invalid_context_request", "invalid_request", "invalid_json", "invalid_job_id", "artifact_match_mismatch", "request_too_large", "invalid_player_id", "player_required"].includes(code) ? 400 : ["note_conflict", "analysis_options_conflict", "review_conflict"].includes(code) ? 409 : code === "origin_not_allowed" ? 403 : 503;
   return json({ error: code }, status);
 }

@@ -72,9 +72,11 @@ export async function executeCoach(pool: Pool, boss: PgBoss, context: WorkContex
     return { status: "failed", code };
   }
 }
-export async function readCoachRuns(pool: Pool, boss: PgBoss, datasetId: string, accountId: string, analysisId: string): Promise<CoachRun[]> {
+export async function readCoachRuns(pool: Pool, boss: PgBoss, datasetId: string, accountId: string, analysisId: string, reportId?: string): Promise<CoachRun[]> {
+  if (reportId !== undefined && !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(reportId)) throw new JobError('coach_invalid_request');
   const analysis = await readAnalysis(pool,datasetId,accountId,analysisId);
-  const rows: CoachRun[] = (await pool.query("SELECT * FROM dota.coach_runs WHERE dataset_id=$1 AND player_slot=$2 AND analysis_id=$3 ORDER BY version DESC LIMIT 100", [datasetId,analysis.playerSlot,analysisId])).rows;
+  const rows: CoachRun[] = (await pool.query("SELECT * FROM dota.coach_runs WHERE dataset_id=$1 AND player_slot=$2 AND analysis_id=$3 AND ($4::uuid IS NULL OR id=$4) ORDER BY version DESC LIMIT 100", [datasetId,analysis.playerSlot,analysisId,reportId??null])).rows;
+  if (reportId && !rows.length) throw new JobError('coach_report_not_found');
   for (const row of rows.filter(r => ["queued","running"].includes(r.status))) {
     const job = await boss.getJobById(QUEUE,row.queue_job_id);
     if (!job || ["failed","cancelled"].includes(job.state)) {

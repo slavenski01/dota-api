@@ -181,7 +181,7 @@ production web и Kotlin CLI; Gradle Wrapper включён в репозито�
 | `packages/persistence`, `packages/jobs` | Хранение, источники, очередь и обработка |
 | `scripts` | Миграции, проверки, эксплуатация и приёмка |
 | [Архитектура](docs/architecture.md) | Действующие связи, инварианты и границы |
-| [План](tasks-plan.md), [доска](tasks-board.html) | 50 DONE, 3 TODO, 6 SKIPPED; E08 завершён, далее E15 |
+| [План](tasks-plan.md), [доска](tasks-board.html) | 51 DONE, 2 TODO, 6 SKIPPED; далее E15-T02 |
 | [Контракты](docs/contracts.md), [хранение](docs/persistence.md) | Форматы, версии и транзакции |
 | [Источники](docs/profiles-and-history.md), [реплеи](docs/replay-import.md) | API и обработка недоступности |
 | [Аналитика](docs/analysis.md), [эпизоды](docs/episode-viewer.md) | Готовые метрики и ручные оценки |
@@ -193,3 +193,5 @@ production web и Kotlin CLI; Gradle Wrapper включён в репозито�
 коммит и push. Исходные ответы, личные ID, реплеи и резервные копии не публикуются.
 
 AI-тренер E08 использует текущий вход ChatGPT в Codex CLI на хосте. После запуска Compose оставьте работающим `npm run coach:bridge` (для Colima: `DOCKER_CONTEXT=colima-dota-api npm run coach:bridge`). [Настройки и ограничения](docs/coach.md).
+
+Переход от отчёта к моменту игры и возврат к исходной версии: [совместный просмотр](docs/coach-viewing.md).
