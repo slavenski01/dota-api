@@ -6,7 +6,7 @@ import {resolve,dirname} from 'node:path';
 import {openDatabase,migrate,LocalStorage,transaction,registerArtifact,REPLAY_MEDIA_TYPE,readMotionWindow,readStateWindow,stateAt} from '@dota/persistence';
 import {normalizationHandler,decodeDataset} from '../packages/jobs/dist/normalization.js';
 import {datasetValidationHandler,datasetValidation} from '../packages/jobs/dist/dataset-validation.js';
-import {windowUsability} from '@dota/analysis';
+import {windowUsability, analysisContext, laneSnapshots} from '@dota/analysis';
 import {readDatasetContext} from "@dota/jobs";
 import {defaultVersions} from '@dota/jobs';
 test('real replay normalization is committed atomically with provenance and distinct event semantics',async t=>{
@@ -38,6 +38,13 @@ test('real replay normalization is committed atomically with provenance and dist
   assert.equal(windowUsability(report,'resources',[0],{startSeconds:0,endSeconds:10}).usable,false);
   await assert.rejects(pool.query('UPDATE dota.dataset_checks SET version=version'));
   const states=rows.filter(r=>r.kind==='hero_state');assert.ok(states.length>100);
+  for(const player of rows.filter(r=>r.kind==='participant')) {
+   const lane=laneSnapshots(analysisContext(rows,report,player.playerSlot));
+   for(const snapshot of Object.values(lane)) {assert.equal(snapshot.metric.status,'known');assert.ok(snapshot.observedAtSeconds<=600&&snapshot.observedAtSeconds>=595);assert.ok(snapshot.metric.value>=0);}
+   assert.ok(lane.last_hits.metric.value<=player.statistics.lastHits);
+   assert.ok(lane.experience.metric.value<=(player.statistics.xpm+1)*rows.find(r=>r.kind==='match').durationSeconds/60+.001);
+  }
+  t.diagnostic('10 players: both lane counters verified at or before 600s, within 5s, bounded by final counters.');
   const first=states.sort((a,b)=>a.gameTimeSeconds-b.gameTimeSeconds)[0];assert.ok(first.gameTimeSeconds<0);
   assert.equal(await stateAt(pool,result.datasetId,first.playerSlot,first.gameTimeSeconds-1),null);
   const exact=await stateAt(pool,result.datasetId,first.playerSlot,first.gameTimeSeconds,0);assert.equal(exact.ageSeconds,0);

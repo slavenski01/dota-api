@@ -47,6 +47,13 @@ object ContractValidator {
                 }
             }
             "hero_state" -> {
+                if (node.has("lane")) {
+                    requireValid(node["perspective"]["mode"].asText() == "omniscient", "lane_requires_retrospective")
+                    for (name in listOf("lastHits", "experience")) {
+                        val observation = node["lane"][name]
+                        requireValid(observation["status"].asText() != "known" || observation["value"].asDouble() >= 0, "negative_lane_counter")
+                    }
+                }
                 val visible = node["visibility"]["status"].asText() == "known" && node["visibility"]["value"].asText() == "visible"
                 if (node["perspective"]["mode"].asText() == "team" && !visible) {
                     for (field in listOf("position", "hp", "mana", "alive", "inventory", "resources")) {

@@ -55,6 +55,10 @@ export function validateRecord(input: unknown): ContractRecord {
       break;
     }
     case "hero_state":
+      if (input.lane) {
+        requireCondition(input.perspective.mode === "omniscient", "lane_requires_retrospective");
+        for (const observation of [input.lane.lastHits,input.lane.experience]) requireCondition(observation.status !== "known" || observation.value >= 0, "negative_lane_counter");
+      }
       if (input.perspective.mode === "team" && !(input.visibility.status === "known" && input.visibility.value === "visible")) {
         for (const field of [input.position, input.hp, input.mana, input.alive, input.inventory, input.resources]) {
           requireCondition(field.status !== "known", "hidden_current_state");

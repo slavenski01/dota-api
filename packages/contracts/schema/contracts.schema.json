@@ -1250,6 +1250,26 @@
           },
           "minItems": 0,
           "uniqueItems": true
+        },
+        "lane": {
+          "type": "object",
+          "properties": {
+            "formatVersion": {
+              "const": "lane-v1"
+            },
+            "lastHits": {
+              "$ref": "#/definitions/NumberObservation"
+            },
+            "experience": {
+              "$ref": "#/definitions/NumberObservation"
+            }
+          },
+          "required": [
+            "formatVersion",
+            "lastHits",
+            "experience"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [

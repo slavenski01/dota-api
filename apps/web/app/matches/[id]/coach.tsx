@@ -7,10 +7,10 @@ import {coachReportLink} from '../../../lib/coach-links';
 const time=(s:number)=>`${s<0?'−':''}${Math.floor(Math.abs(s)/60)}:${String(Math.floor(Math.abs(s)%60)).padStart(2,'0')}`;
 const reviewLabels={unreviewed:'Не проверено',confirmed_error:'Ошибка подтверждена автором оценки',justified:'Оправдано по ручной оценке',uncertain:'Вывод неопределён'};
 const goals={overview:'Общий разбор',deaths_trades:'Смерти и размены',objectives:'Потери объектов',item_timing:'После ключевого предмета'};
-export default function MatchCoach({matchId,datasetId,analysisId,accountId,pinned=false}:{matchId:string;datasetId:string;analysisId:string;accountId:string;pinned?:boolean}) {
+export default function MatchCoach({matchId,datasetId,analysisId,accountId,pinned=false,comparisonRole}:{matchId:string;datasetId:string;analysisId:string;accountId:string;pinned?:boolean;comparisonRole?:CoachSettings['role']}) {
   const search=useSearchParams(),selected=pinned?search.get('reportId')??'':'';
   const [reports,setReports]=useState<CoachReportView[]>([]),[error,setError]=useState(''),[loadError,setLoadError]=useState(''),[loading,setLoading]=useState(true),[sending,setSending]=useState(false);
-  const [role,setRole]=useState(''),[goal,setGoal]=useState<CoachSettings['goal']>('overview');
+  const [role,setRole]=useState(comparisonRole==null?'':String(comparisonRole)),[goal,setGoal]=useState<CoachSettings['goal']>('overview');
   const pending=useRef<{key:string;settings:CoachSettings}|null>(null);
   const endpoint=`/api/datasets/${encodeURIComponent(datasetId)}/coach?${new URLSearchParams({accountId,analysisId})}`;
   async function refresh(signal?:AbortSignal) {
@@ -45,7 +45,8 @@ export default function MatchCoach({matchId,datasetId,analysisId,accountId,pinne
   const episodeLink=(id:string)=>`/matches/${encodeURIComponent(matchId)}/episodes/${encodeURIComponent(id)}?${new URLSearchParams({datasetId,accountId,analysisId,reportId:report!.id,time:String(report!.context.episodes.find(e=>e.id===id)!.time),hero:String(report!.context.playerSlot),mode:'retrospective'})}`;
   return <section className="coach-report" aria-label="AI-тренер"><h2>AI-тренер</h2>
     <p>Разбор по доступным фактам с вопросами к просмотру. Использует общий лимит вашей подписки Codex.</p>
-    <div className="coach-form"><label>Подтверждённая позиция в этом матче<select value={role} onChange={e=>setRole(e.target.value)} disabled={sending||active}>
+    {comparisonRole!==undefined&&<p>Позиция взята из сохранённого сравнения. Для изменения создайте новое сравнение.</p>}
+    <div className="coach-form"><label>Подтверждённая позиция в этом матче<select value={role} onChange={e=>setRole(e.target.value)} disabled={sending||active||comparisonRole!==undefined}>
       <option value="">Неизвестна</option>{[1,2,3,4,5].map(r=><option key={r} value={r}>Позиция {r}</option>)}</select></label>
       <label>Цель разбора<select value={goal} onChange={e=>setGoal(e.target.value as CoachSettings['goal'])} disabled={sending||active}>{Object.entries(goals).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
       <button onClick={()=>void start()} disabled={loading||sending||active}>{sending?'Отправка…':active?'Разбор выполняется…':reports.length?'Создать новую версию':'Получить разбор'}</button></div>

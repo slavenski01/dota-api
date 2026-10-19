@@ -10,6 +10,7 @@ export const COACH_SCHEMA_VERSION = "coach-v1";
 export interface CoachSettings { role: 1 | 2 | 3 | 4 | 5 | null; goal: "overview" | "deaths_trades" | "objectives" | "item_timing" }
 export interface CoachFact { id: string; text: string; evidenceIds: string[]; episodeId: string | null }
 export interface CoachContext {
+  comparison?: { id:string; fingerprint:string; filters: unknown; sampleSizes: {metric:string;n:number}[] };
   schemaVersion: string; datasetId: string; analysisId: string; matchId: string; playerSlot: number; heroId: string | null;
   settings: CoachSettings; roleSource: "user" | "unknown"; rank: null; versions: AnalysisRun["versions"]; analysisOptions: AnalysisRun["options"];
   outcome: AnalysisRun["outcome"]; completeness: AnalysisRun["completeness"]; facts: CoachFact[];
@@ -90,6 +91,13 @@ export async function buildCoachInput(pool: Pool, datasetId: string, accountId: 
     evidence:records.filter(r=>used.has(r.id)).map(r=>({id:r.id,kind:r.kind,time:'gameTimeSeconds' in r?r.gameTimeSeconds:null,sha256:coachHash(r)})),
     episodes,skipped:run.results.filter(r=>r.status==='skipped').map(r=>({ruleId:r.ruleId,reasons:r.reasons})),
     limitations:[...run.limitations,'Обзор игрока, доступность способностей и выполнимость альтернатив не установлены.','Рейтинг неизвестен. Роль задана пользователем либо неизвестна.'] };
+  if(run.comparison){
+    const comparison=(await pool.query('SELECT payload FROM dota.comparison_runs WHERE id=$1 AND dataset_id=$2 AND account_id=$3',[run.comparison.id,datasetId,accountId])).rows[0]?.payload;
+    if(!comparison||comparison.analysisId!==run.id||comparison.selection.fingerprint!==run.comparison.fingerprint)throw new JobError('coach_evidence_missing');
+    context.comparison={...run.comparison,filters:comparison.selection.filters,sampleSizes:comparison.lane.map((r:{metric:string;n:number})=>({metric:r.metric,n:r.n}))};
+    // User-selected role must agree with the role that defined this comparison.
+    if(settings.role!==comparison.selection.current.role)throw new JobError('coach_invalid_request');
+  }
   // Collapse duplicate skip reasons to keep long partial matches bounded.
   context.skipped = [...new Map(context.skipped.map(s=>[JSON.stringify(s),s])).values()];
   const instructions=await coachInstructions();

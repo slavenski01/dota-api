@@ -31,9 +31,9 @@ class StateCollector {
     private data class Item(val id: String, val slot: Int, val charges: Int?)
     private data class Resource(val id: String, val kind: String)
     private data class Sample(val time: Double, val tick: Int, val slot: Int, val hp: Double?, val mana: Double?, val alive: Boolean?,
-        val items: List<Item>?, val resources: List<Resource>?, val position: Map<String, Any?>?)
+        val items: List<Item>?, val resources: List<Resource>?, val position: Map<String, Any?>?, val lastHits: Double?, val experience: Double?)
     private val samples = mutableListOf<Sample>()
-    @OnEntityCreated(classPattern = "CDOTAGamerulesProxy|CDOTA_PlayerResource")
+    @OnEntityCreated(classPattern = "CDOTAGamerulesProxy|CDOTA_PlayerResource|CDOTA_DataRadiant|CDOTA_DataDire")
     fun entity(entity: Entity) { entities[entity.dtClass.dtName] = entity }
     @OnMessage(CNETMsg_Tick::class)
     fun clock(message: CNETMsg_Tick) { tick = message.tick }
@@ -82,6 +82,8 @@ class StateCollector {
                 if (kind == "item") allItems = complete else allAbilities = complete
             }
             checkReplay(samples.size < 120_000, "State sample limit exceeded.")
+            val teamData = entities[if (team == 2) "CDOTA_DataRadiant" else "CDOTA_DataDire"]
+            val statsPrefix = "m_vecDataTeam.${idxState(teamSlot)}."
             samples += Sample(time, context.tick, teamSlot + if (team == 2) 0 else 128,
                 hero.numState("m_iHealth")?.toDouble()?.takeIf { it.isFinite() && it >= 0 },
                 hero.numState("m_flMana")?.toDouble()?.takeIf { it.isFinite() && it >= 0 },
@@ -90,7 +92,9 @@ class StateCollector {
                 worldPosition(hero.numState("CBodyComponent.m_hParent"),
                     hero.numState("CBodyComponent.m_cellX"), hero.numState("CBodyComponent.m_vecX"),
                     hero.numState("CBodyComponent.m_cellY"), hero.numState("CBodyComponent.m_vecY"),
-                    hero.numState("CBodyComponent.m_cellZ"), hero.numState("CBodyComponent.m_vecZ")))
+                    hero.numState("CBodyComponent.m_cellZ"), hero.numState("CBodyComponent.m_vecZ")),
+                teamData?.numState(statsPrefix + "m_iLastHitCount")?.toDouble(),
+                teamData?.numState(statsPrefix + "m_iTotalEarnedXP")?.toDouble())
         }
     }
     fun records(basic: List<ObjectNode>): List<ObjectNode> {
@@ -103,6 +107,23 @@ class StateCollector {
         val deaths = basic.filter { it["kind"].asText() == "event" && it["data"]["type"].asText() == "death" }.map { it["gameTimeSeconds"].asDouble() }
         val output = mutableListOf<ObjectNode>()
         val lastSparse = mutableMapOf<Int, Long>()
+        // These are the same cumulative counters used by the final scoreboard.
+        // A regression or value exceeding the epilogue invalidates that metric for the slot.
+        val validCounters = mutableMapOf<Pair<Int, String>, Boolean>()
+        for (player in basic.filter { it["kind"].asText() == "participant" }) {
+            val slot = player["playerSlot"].asInt()
+            for (name in listOf("lastHits", "experience")) {
+                val field = player["statistics"][if (name == "lastHits") "lastHits" else "xpm"]
+                val teamData = entities[if (slot < 128) "CDOTA_DataRadiant" else "CDOTA_DataDire"]
+                val finalValue = if (!field.isNumber) null else if (name == "lastHits") field.asDouble() else
+                    teamData?.numState("m_vecDataTeam.${idxState(slot % 128)}.m_iTotalEarnedXP")?.toDouble()?.takeIf {
+                        rate(it, match["durationSeconds"].asDouble()) == field.asLong()
+                    }
+                val values = samples.filter { it.slot == slot && it.time in start..end }.mapNotNull { if (name == "lastHits") it.lastHits else it.experience }
+                validCounters[slot to name] = finalValue != null && finalValue.isFinite() && values.isNotEmpty() &&
+                    values.all { it.isFinite() && it >= 0 && it <= finalValue + 0.001 } && values.zipWithNext().all { (a, b) -> b >= a }
+            }
+        }
         for ((i, sample) in samples.withIndex()) {
             if (sample.time > end) continue
             val time = sampledTime(sample.time, start)
@@ -121,6 +142,11 @@ class StateCollector {
                 set<ObjectNode>("position", observation(sample.position, "World origin unavailable: missing network coordinates or an unresolved parent transform."))
                 set<ObjectNode>("hp", observation(sample.hp, "Health field unavailable."))
                 set<ObjectNode>("mana", observation(sample.mana, "Mana field unavailable."))
+                putObject("lane").apply {
+                    put("formatVersion", "lane-v1")
+                    set<ObjectNode>("lastHits", observation(sample.lastHits?.takeIf { validCounters[sample.slot to "lastHits"] == true }, "Cumulative last-hit counter unavailable or inconsistent with final scoreboard."))
+                    set<ObjectNode>("experience", observation(sample.experience?.takeIf { validCounters[sample.slot to "experience"] == true }, "Cumulative earned experience unavailable or inconsistent with final scoreboard."))
+                }
                 set<ObjectNode>("alive", observation(sample.alive, "Unknown lifeState value."))
                 set<ObjectNode>("inventory", observation(sample.items?.map { mapOf("itemId" to it.id, "slot" to it.slot, "charges" to it.charges) }, "Inventory slots or stable IDs incomplete."))
                 set<ObjectNode>("resources", observation(sample.resources?.map { mapOf("resourceId" to it.id, "kind" to it.kind,

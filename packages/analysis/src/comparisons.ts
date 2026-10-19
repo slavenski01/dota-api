@@ -10,6 +10,7 @@ export interface ComparisonContext {
   earlyLeave: boolean | null; dataGap: boolean | null;
 }
 export interface ComparisonMatch extends ComparisonContext {
+  analysisId?: string | null;
   matchId: string; datasetId: string | null; accountId: string; startedAt: string | null;
   heroId: string | null; mode: string | null; won: boolean | null;
   contextVersion: number; validated: boolean; conflict: boolean;

@@ -1,6 +1,6 @@
-import { comparisonFields, comparisonMetrics, selectComparison, snapshotAt, type ComparisonContext, type ComparisonFilters, type ComparisonMatch, type ComparisonSelection } from "@dota/analysis";
+import { analysisContext, compareLaning, evaluateL01, fingerprint, laneSnapshots, selectEpisodes, comparisonFields, comparisonMetrics, selectComparison, snapshotAt, type AnalysisRun, type ComparisonContext, type ComparisonFilters, type ComparisonMatch, type ComparisonSelection } from "@dota/analysis";
 import type { Match, Participant } from "@dota/contracts";
-import { normalizePlayerId, transaction, type Pool, type PoolClient } from "@dota/persistence";
+import { insertRecords, normalizePlayerId, transaction, type Pool, type PoolClient } from "@dota/persistence";
 import { JobError } from "./index.js";
 
 type Database = Pick<Pool | PoolClient, "query">;
@@ -60,8 +60,14 @@ async function loadMatch(db: Database, matchId: string, accountId: string, exact
   const player = row.player as Participant | undefined, match = row.match as Match | undefined;
   const context: ComparisonContext = { ...emptyComparisonContext, ...row.context };
   const validated = row.validation?.complete === true;
+  const analysis: AnalysisRun | undefined = row.dataset_id ? (await db.query("SELECT payload FROM dota.analysis_runs WHERE dataset_id=$1 AND player_slot=$2 AND NOT(payload ? 'comparison') ORDER BY created_at DESC,id DESC LIMIT 1", [row.dataset_id, player?.playerSlot])).rows[0]?.payload : undefined;
   const metrics = Object.fromEntries(Object.entries(player?.statistics ?? {}).map(([key, value]) => [key, { value: validated ? value : null, evidenceIds: player ? [player.id] : [] }]));
   const missing = (semantic: "last_hits" | "experience") => snapshotAt({ semantic, cumulative: true, timelineVerified: false, intervalSeconds: null, evidenceIds: [], points: [] }, 600);
+  let lane = {last_hits:missing('last_hits'),experience:missing('experience')};
+  if(validated && player && row.dataset_id){
+    const records=(await db.query("SELECT payload FROM dota.records WHERE dataset_id=$1 AND (kind IN ('match','participant','coverage') OR kind='hero_state' AND player_slot=$2 AND game_time_seconds BETWEEN 595 AND 600) ORDER BY id",[row.dataset_id,player.playerSlot])).rows.map(r=>r.payload);
+    lane=laneSnapshots(analysisContext(records,row.validation,player.playerSlot));
+  }
   return { ...context, matchId, accountId, datasetId: row.dataset_id ?? null, startedAt: match?.startedAt ?? row.started_at?.toISOString() ?? null,
     heroId: player?.heroId ?? (row.summary?.heroId ? String(row.summary.heroId) : null), mode: match?.mode ?? null,
     role: context.role ?? (player?.role?.source === "manual" ? player.role.position as ComparisonContext["role"] : null),
@@ -70,9 +76,10 @@ async function loadMatch(db: Database, matchId: string, accountId: string, exact
     contextVersion: row.version ?? 0, validated,
     conflict: Boolean(context.patch && match?.patch && context.patch !== match.patch || context.aspect && player?.aspectId && context.aspect !== player.aspectId ||
       player?.heroId && row.summary?.heroId && player.heroId !== String(row.summary.heroId) || row.validation?.issues?.some((i: { field: string | null }) => i.field === null || i.field === "time" || i.field === "statistics")),
-    metrics, lane: { last_hits: missing("last_hits"), experience: missing("experience") } };
+    analysisId: analysis?.id ?? null, metrics, lane };
 }
 export interface ComparisonView {
+  lane: ReturnType<typeof compareLaning>; analysisId: string | null;
   id: string; selection: ComparisonSelection; metrics: ReturnType<typeof comparisonMetrics>; createdAt: string;
   inspectedLimit: number; truncated: boolean;
 }
@@ -88,7 +95,21 @@ export async function createComparison(pool: Pool, datasetId: string, accountId:
     for (const row of rows.slice(0, 1000)) candidates.push(await loadMatch(db, row.match_id, accountId));
     const selection = selectComparison(current, candidates, filters);
     const id = `comparison-${selection.fingerprint}`;
-    const payload: ComparisonView = { id, selection, metrics: comparisonMetrics(selection), createdAt: new Date().toISOString(), inspectedLimit: 1000, truncated: rows.length > 1000 };
+    let analysisId: string|null = null;
+    if(current.analysisId){
+      const base:AnalysisRun=(await db.query('SELECT payload FROM dota.analysis_runs WHERE id=$1',[current.analysisId])).rows[0].payload;
+      const records=(await db.query("SELECT payload FROM dota.records WHERE dataset_id=$1 AND (kind IN ('match','participant','event','coverage') OR kind='hero_state' AND player_slot=$2 AND game_time_seconds BETWEEN 595 AND 600) ORDER BY id",[datasetId,base.playerSlot])).rows.map(r=>r.payload);
+      const validation=(await db.query('SELECT payload FROM dota.dataset_checks WHERE dataset_id=$1',[datasetId])).rows[0].payload;
+      const ctx=analysisContext(records,validation,base.playerSlot),results=[...base.results.filter(r=>r.ruleId!=='L01'),...evaluateL01(ctx,selection)];
+      analysisId=`analysis-${fingerprint({base:base.id,comparison:id})}`;
+      const episodes=selectEpisodes(ctx,results,analysisId);
+      const run:AnalysisRun={...base,id:analysisId,comparison:{id,fingerprint:selection.fingerprint},results,episodes,primaryEpisodeIds:episodes.slice(0,3).map(e=>e.episode.id),
+        completeness:results.some(r=>r.status==='skipped'||!r.dataComplete)?'partial':'complete',outcome:episodes.length?'candidates':results.some(r=>r.status==='skipped')?'insufficient_data':'no_candidates',
+        limitations:[...base.limitations.filter(l=>!l.startsWith('Сравнение линии')), 'Сравнение линии — предварительный сигнал собственной базы; оно не устанавливает ошибку или причину результата.']};
+      const saved=await db.query('INSERT INTO dota.analysis_runs(id,dataset_id,match_id,player_slot,payload) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING RETURNING id',[analysisId,datasetId,run.matchId,run.playerSlot,run]);
+      if(saved.rowCount)await insertRecords(db as PoolClient,datasetId,episodes.map(e=>e.episode));
+    }
+    const payload: ComparisonView = { id, selection, lane:compareLaning(selection),analysisId,metrics: comparisonMetrics(selection), createdAt: new Date().toISOString(), inspectedLimit: 1000, truncated: rows.length > 1000 };
     await db.query("INSERT INTO dota.comparison_runs(id,dataset_id,account_id,payload) VALUES ($1,$2,$3,$4) ON CONFLICT (id) DO NOTHING", [id, datasetId, accountId, payload]);
     return (await db.query("SELECT payload FROM dota.comparison_runs WHERE id=$1", [id])).rows[0].payload;
   });

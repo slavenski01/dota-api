@@ -182,3 +182,12 @@ test("motion format rejects duplicate time, backwards ticks, partial coordinates
  const changes=[t=>t.samples[1].time=t.samples[0].time,t=>t.samples[1].tick=t.samples[0].tick,t=>t.samples[1].x=null,t=>t.samples[1].time=31,t=>{t.samples[1].x=null;t.samples[1].y=null;}];
  for(const change of changes){const invalid=structuredClone(track);change(invalid);assert.throws(()=>validateRecord(invalid));assert.notEqual(kotlin(wire([message(invalid),complete(1)])).status,0);}
 });
+
+test('lane counters round-trip and reject future, negative and team observations in both runtimes',()=>{
+ const state=structuredClone(records.find(r=>r.kind==='hero_state'));state.perspective={mode:'omniscient'};
+ state.lane={formatVersion:'lane-v1',lastHits:{status:'known',value:0,observedAtSeconds:state.gameTimeSeconds},experience:{status:'unknown',value:null,reason:'Missing'}};
+ validateRecord(state);assert.equal(kotlin(wire([message(state),complete(1)])).status,0);
+ for(const change of [s=>s.lane.lastHits.observedAtSeconds++,s=>s.lane.lastHits.value=-1,s=>s.perspective={mode:'team',team:'radiant'}]){
+  const invalid=structuredClone(state);change(invalid);assert.throws(()=>validateRecord(invalid));assert.notEqual(kotlin(wire([message(invalid),complete(1)])).status,0);
+ }
+});

@@ -12,6 +12,7 @@ export interface SelectedEpisode {
   episode: Episode; anchorId: string; priorityGroup: number; results: RuleResult[]; relatedEpisodeIds: string[];
 }
 export interface AnalysisRun {
+  comparison?: { id: string; fingerprint: string };
   id: string; datasetId: string; matchId: string; playerSlot: PlayerSlot; mode: "retrospective";
   versions: AnalysisRunVersions; options: AnalysisOptions | null; metrics: Record<string, Metric>;
   outcome: "candidates" | "no_candidates" | "insufficient_data"; completeness: "complete" | "partial";
@@ -30,7 +31,7 @@ export function selectEpisodes(context: AnalysisContext, results: RuleResult[], 
   }
   const episodes: SelectedEpisode[] = [...groups.entries()].map(([key, group]) => {
     group.sort((a, b) => priority[a.ruleId] - priority[b.ruleId]);
-    const anchorId = group[0]!.anchorId!, anchor = context.events.find(e => e.id === anchorId);
+    const anchorId = group[0]!.anchorId!, anchor = context.records.find(e => e.id === anchorId);
     if (!anchor) throw new Error("episode_anchor_missing");
     const evidenceIds = unique(group.flatMap(r => r.evidenceIds));
     if (evidenceIds.some(id => !recordIds.has(id))) throw new Error("episode_evidence_missing");
@@ -38,7 +39,7 @@ export function selectEpisodes(context: AnalysisContext, results: RuleResult[], 
       provenance: { source: "derived", acquiredAt: context.match.provenance.acquiredAt, artifactId: context.match.provenance.artifactId, sourceVersion: RULES_VERSION, inputIds: evidenceIds },
       datasetId: context.validation.datasetId, playerSlot: context.player.playerSlot,
       window: { startSeconds: Math.min(...group.map(r => r.viewWindow!.startSeconds)), endSeconds: Math.max(...group.map(r => r.viewWindow!.endSeconds)) },
-      decisionTimeSeconds: anchor.data.type === "fight" ? anchor.data.window.startSeconds : anchor.gameTimeSeconds,
+      decisionTimeSeconds: anchor.kind === "event" ? anchor.data.type === "fight" ? anchor.data.window.startSeconds : anchor.gameTimeSeconds : 0,
       signals: group.map(r => ({ ruleId: r.ruleId, ruleVersion: r.version, configSha256: r.configSha256, evidenceIds: r.evidenceIds })), evidenceIds, review: null }) as Episode;
     return { episode, anchorId, priorityGroup: Math.min(...group.map(r => priority[r.ruleId])), results: group, relatedEpisodeIds: [] };
   });
@@ -65,5 +66,5 @@ export function analyse(context: AnalysisContext, input: AnalysisOptions | null,
     completeness: incomplete ? "partial" : "complete", results, episodes, primaryEpisodeIds: episodes.slice(0, 3).map(e => e.episode.id), purchases: purchaseJournal(context),
     limitations: ["Порядок просмотра из методики не является шкалой тяжести. Автоматические эпизоды требуют проверки и не подтверждают ошибку.",
       "Это ретроспективный отбор по событиям. Его нельзя использовать как сведения, доступные игроку в момент решения.",
-      "Ряды добиваний и опыта на 5/10 минутах текущим источником не подтверждены. Сравнение с собственной базой пока недоступно."] };
+      "Сравнение линии с собственной базой запускается отдельно на странице сравнения. Старые наборы могут не иметь снимков добиваний и опыта."] };
 }
