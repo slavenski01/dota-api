@@ -78,6 +78,10 @@ async function loadMatch(db: Database, matchId: string, accountId: string, exact
       player?.heroId && row.summary?.heroId && player.heroId !== String(row.summary.heroId) || row.validation?.issues?.some((i: { field: string | null }) => i.field === null || i.field === "time" || i.field === "statistics")),
     analysisId: analysis?.id ?? null, metrics, lane };
 }
+export async function loadComparisonMatch(db: Database, datasetId: string, accountId: string): Promise<ComparisonMatch> {
+  const t=await target(db,datasetId,accountId);
+  return loadMatch(db,t.match_id,accountId,datasetId);
+}
 export interface ComparisonView {
   lane: ReturnType<typeof compareLaning>; analysisId: string | null;
   id: string; selection: ComparisonSelection; metrics: ReturnType<typeof comparisonMetrics>; createdAt: string;

@@ -8,6 +8,7 @@ import { heroName } from "../../../../lib/hero-catalog";
 import MatchAnalysis from "../analysis";
 import MatchCoach from "../coach";
 import { gameTime } from "../../../../lib/game-time";
+import Progress from "./progress";
 type ContextView = Awaited<ReturnType<typeof readComparisonContext>>;
 const empty: ComparisonContext = { role:null,patch:null,aspect:null,party:null,plan:null,earlyLeave:null,dataGap:null };
 const fields: Record<ComparisonField,string> = {heroId:'Герой',role:'Позиция',patch:'Патч',mode:'Режим',aspect:'Аспект',party:'Группа',plan:'План игры'};
@@ -35,7 +36,7 @@ export default function Comparison({matchId,datasetId,accountId}:{matchId:string
     } catch(e){setError((e as Error).message);}finally{setBusy(false);}
   }
   function matchLink(m:ComparisonMatch) {return m.datasetId?<Link href={`/matches/${m.matchId}/compare?${new URLSearchParams({accountId,datasetId:m.datasetId})}`}>Матч {m.matchId}</Link>:<Link href={`/matches/${m.matchId}?${new URLSearchParams({accountId})}`}>Матч {m.matchId}</Link>;}
-  return <main><Link href={`/matches/${matchId}?${new URLSearchParams({accountId})}`}>← К матчу</Link><p className="eyebrow">СОБСТВЕННАЯ БАЗА</p><h1>Сравнение матчей</h1>
+  return <main className="comparisons-page"><Link href={`/matches/${matchId}?${new URLSearchParams({accountId})}`}>← К матчу</Link><p className="eyebrow">СОБСТВЕННАЯ БАЗА</p><h1>Сравнение матчей</h1>
     <p>Матч {matchId}. Сравниваются только сохранённые предыдущие игры выбранного игрока, включая победы и поражения.</p>
     {error&&<p role="alert" className="notice error">{error} <button disabled={busy} onClick={()=>void load().then(()=>setError('')).catch(e=>setError(e.message))}>Повторить загрузку</button></p>}
     {message&&<p role="status">{message}</p>}
@@ -65,5 +66,6 @@ export default function Comparison({matchId,datasetId,accountId}:{matchId:string
     </section><section><h2>Состав выборки</h2><div className="table-scroll"><table><thead><tr><th>Матч</th><th>Герой</th><th>Результат</th><th>Контекст</th><th>Отбор</th></tr></thead><tbody>{[...run.selection.included.map(match=>({match,reasons:[]})),...run.selection.excluded].map(({match:m,reasons:why})=><tr key={m.matchId}><td>{matchLink(m)}</td><td>{heroName(m.heroId)}</td><td>{m.won===null?'Неизвестно':m.won?'Победа':'Поражение'}</td><td>Позиция {m.role??'—'}; патч {m.patch??'—'}; режим {m.mode??'—'}; версия {m.contextVersion}</td><td>{why.length?why.map(r=>reasons[r]??r).join('; '):'Включён'}</td></tr>)}</tbody></table></div><p className="muted">Откройте матч, чтобы уточнить его контекст. Сохранённые сравнения сохраняют прежние входные данные.</p></section>
     {run.analysisId&&<><MatchAnalysis key={run.analysisId} datasetId={datasetId} accountId={accountId} analysisId={run.analysisId} items={[]}/><MatchCoach key={`coach-${run.analysisId}`} matchId={matchId} datasetId={datasetId} accountId={accountId} analysisId={run.analysisId} comparisonRole={run.selection.current.role}/></>}
     </>}
+    {loaded&&<Progress key={`${datasetId}:${context?.current?.version??0}`} datasetId={datasetId} accountId={accountId} matchId={matchId} analysisId={run?.analysisId??run?.selection.current.analysisId??null}/>}
   </main>;
 }

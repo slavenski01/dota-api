@@ -114,3 +114,17 @@ td:nth-child(6) { min-width: 220px; }
 .coach-form label { display: grid; gap: .35rem; }
 .coach-report article { border: 1px solid #465366; border-radius: .5rem; padding: 1rem; margin: 1rem 0; }
 .coach-hash { overflow-wrap: anywhere; font-size: .85rem; }
+
+/* Comparison and practice forms share the established local-app controls. */
+.comparisons-page fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; border: 1px solid #34473d; border-radius: 10px; padding: 20px; margin: 16px 0; min-width: 0; }
+.comparisons-page label { display: flex; flex-direction: column; gap: 6px; min-width: 0; margin: 10px 0; }
+.comparisons-page label:has(input[type="checkbox"]) { flex-direction: row; align-items: center; }
+.comparisons-page input:not([type="checkbox"]), .comparisons-page select, .comparisons-page textarea { box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; }
+.comparisons-page textarea { min-height: 100px; resize: vertical; color: inherit; background: #18221e; border: 1px solid #57704e; border-radius: 8px; padding: 12px; font: inherit; }
+.comparisons-page fieldset > p, .comparisons-page fieldset > button, .comparisons-page label:has(textarea) { grid-column: 1 / -1; }
+.comparisons-page input[type="checkbox"] { margin: 0; flex-shrink: 0; }
+.comparisons-page fieldset > button { justify-self: start; }
+.comparisons-page .table-scroll { max-width: 100%; }
+.comparisons-page details { margin: 16px 0; }
+.comparisons-page summary { cursor: pointer; }
+@media (max-width: 600px) { .comparisons-page fieldset { grid-template-columns: minmax(0, 1fr); padding: 12px; } }

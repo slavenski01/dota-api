@@ -98,3 +98,5 @@ export { readPlaybackWindow } from "./playback.js";
 export type { PlaybackWindow } from "./playback.js";
 export { createComparison, readComparisons, readComparisonContext, saveComparisonContext, parseComparisonFilters, emptyComparisonContext } from "./comparisons.js";
 export type { ComparisonView } from "./comparisons.js";
+export { createPractice, savePracticeObservation, readPractice, practiceEligibility } from "./practice.js";
+export type { PracticeSeries, PracticeObservation, PracticeView } from "./practice.js";
