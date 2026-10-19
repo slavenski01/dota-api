@@ -1,4 +1,5 @@
 export * from "./metrics.js";
+export * from "./comparisons.js";
 export * from "./rules.js";
 export { evaluateD01, evaluateD02 } from "./death-rules.js";
 export { evaluateI01, evaluateF01, purchaseJournal, analysisOptions } from "./item-fight-rules.js";

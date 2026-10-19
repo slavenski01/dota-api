@@ -45,6 +45,7 @@ const messages: Record<string,string> = {
   history_interrupted: "Обновление прервано. Запустите его повторно.",
   participant_account_conflict: "Источник вернул конфликтующие данные участника. Страница не сохранена.",
 };
+Object.assign(messages, {invalid_comparison:'Проверьте контекст и условия сравнения.',comparison_not_found:'Проверенный набор этого игрока не найден.',comparison_conflict:'Контекст изменён в другой вкладке. Загрузите текущую версию перед сохранением.',invalid_progress:'Проверьте действие и счётчики наблюдения.',progress_not_found:'Серия наблюдений не найдена.',progress_conflict:'Серия изменилась или уже содержит пять игр. Обновите страницу.'});
 export function sourceError(code: string): string {return messages[code] ?? "Не удалось выполнить запрос. Попробуйте ещё раз.";}
 export async function api<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url,options); const body=await response.json();
